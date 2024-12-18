@@ -31,10 +31,54 @@ const Detail = () => {
                 </div>
                 <div className="photos">
                     <div className="photoItem">
+                        <div className="photoDetail">
                         <img src="./image.png" alt="" />
                         <span>photo_name_2024</span>
-                    </div>
+                        </div>
                     <img src="./download.png" alt="icon" />
+                    </div>
+                    <div className="photoItem">
+                        <div className="photoDetail">
+                        <img src="./image.png" alt="" />
+                        <span>photo_name_2024</span>
+                        </div>
+                    <img src="./download.png" alt="icon" />
+                    </div>
+                    <div className="photoItem">
+                        <div className="photoDetail">
+                        <img src="./image.png" alt="" />
+                        <span>photo_name_2024</span>
+                        </div>
+                    <img src="./download.png" alt="icon" />
+                    </div>
+                    <div className="photoItem">
+                        <div className="photoDetail">
+                        <img src="./image.png" alt="" />
+                        <span>photo_name_2024</span>
+                        </div>
+                    <img src="./download.png" alt="icon" />
+                    </div>
+                    <div className="photoItem">
+                        <div className="photoDetail">
+                        <img src="./image.png" alt="" />
+                        <span>photo_name_2024</span>
+                        </div>
+                    <img src="./download.png" alt="icon" />
+                    </div>
+                    <div className="photoItem">
+                        <div className="photoDetail">
+                        <img src="./image.png" alt="" />
+                        <span>photo_name_2024</span>
+                        </div>
+                    <img src="./download.png" alt="icon" />
+                    </div>
+                    <div className="photoItem">
+                        <div className="photoDetail">
+                        <img src="./image.png" alt="" />
+                        <span>photo_name_2024</span>
+                        </div>
+                    <img src="./download.png" alt="icon" />
+                    </div>
                 </div>
                 </div>
                 <div className="option">
