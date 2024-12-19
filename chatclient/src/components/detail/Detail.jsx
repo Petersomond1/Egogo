@@ -5,7 +5,7 @@ const Detail = () => {
     return (
         <div className="detail_container">
             <div className="user">
-                <img src="" alt="" />
+                <img src="./avatar.png" alt="" />
                 <h2>Robert King</h2>
                 <p>
                     Lorem ipsum dolor sit amet consectetur adipisicing!
@@ -35,58 +35,25 @@ const Detail = () => {
                         <img src="./image.png" alt="" />
                         <span>photo_name_2024</span>
                         </div>
-                    <img src="./download.png" alt="icon" />
+                    <img src="./download.png" alt="icon" className='icon' />
                     </div>
                     <div className="photoItem">
                         <div className="photoDetail">
                         <img src="./image.png" alt="" />
                         <span>photo_name_2024</span>
                         </div>
-                    <img src="./download.png" alt="icon" />
+                    <img src="./download.png" alt="icon" className='icon' />
                     </div>
                     <div className="photoItem">
                         <div className="photoDetail">
                         <img src="./image.png" alt="" />
                         <span>photo_name_2024</span>
                         </div>
-                    <img src="./download.png" alt="icon" />
-                    </div>
-                    <div className="photoItem">
-                        <div className="photoDetail">
-                        <img src="./image.png" alt="" />
-                        <span>photo_name_2024</span>
-                        </div>
-                    <img src="./download.png" alt="icon" />
-                    </div>
-                    <div className="photoItem">
-                        <div className="photoDetail">
-                        <img src="./image.png" alt="" />
-                        <span>photo_name_2024</span>
-                        </div>
-                    <img src="./download.png" alt="icon" />
-                    </div>
-                    <div className="photoItem">
-                        <div className="photoDetail">
-                        <img src="./image.png" alt="" />
-                        <span>photo_name_2024</span>
-                        </div>
-                    <img src="./download.png" alt="icon" />
-                    </div>
-                    <div className="photoItem">
-                        <div className="photoDetail">
-                        <img src="./image.png" alt="" />
-                        <span>photo_name_2024</span>
-                        </div>
-                    <img src="./download.png" alt="icon" />
+                    <img src="./download.png" alt="icon" className='icon' />
                     </div>
                 </div>
                 </div>
-                <div className="option">
-                <div className="title">
-                <span>Shared Files</span>
-                <img src="./arrowUp.png" alt="" />
-                </div>
-                </div>
+                
                 <button>Block User</button>
                
             </div>
