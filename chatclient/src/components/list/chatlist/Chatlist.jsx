@@ -87,3 +87,5 @@ const Chatlist = () => {
 }   
 
 export default Chatlist
+
+// Addition of the AddUser component to the Chatlist component ends the clientside design of the chat application.
