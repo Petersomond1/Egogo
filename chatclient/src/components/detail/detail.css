@@ -101,11 +101,15 @@
     }
     button{
         padding: 10px 20px;
-        background-color: red;
+        background-color: #ff11005e;
         color: white;
         border: none;
         border-radius: 5px;
         cursor: pointer;
+
+        &:hover{
+            background-color: red;
+        }
     }
 }
 }
