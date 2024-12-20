@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import './Login.css';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { toast } from 'react-toastify';
- import { auth } from '../lib/firebase'; // wked when off here and user true at Api.jsx showed home page too. but ReferenceError: auth is not defined
+import { auth, db } from '../lib/firebase'; // ../lib/firebase. wked when off here and user true at Api.jsx showed home page too. but ReferenceError: auth is not defined
+import { doc, setDoc } from 'firebase/firestore';
 
 
 const Login = () => {
@@ -21,7 +22,20 @@ const Login = () => {
 
         try {
             const res = await createUserWithEmailAndPassword(auth, email, password);
-            toast.success("User registered successfully!");
+
+            await setDoc(doc(db, 'users', res.user.uid), {
+                username,
+                email,
+                id: res.user.uid,
+                blocked: [],
+            });
+
+            await setDoc(doc(db, 'userchats', res.user.uid), {
+                chats: [],
+            });
+
+            toast.success("User registered successfully! You can now login.");
+            
         } catch (err) {
             console.log(err);
             toast.error(err.message);
