@@ -6,8 +6,8 @@ import Login from "./components/login/Login"
 
 const App = () => {
 
-// To mimick that user is login or not, we set user to true or false
-  const user = true;
+// To mimick that user is login or not, or to see the login page, we set user to true or false
+  const user = false;
   return (
     <>
     <div className='container'>

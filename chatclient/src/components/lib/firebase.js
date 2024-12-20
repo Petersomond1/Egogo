@@ -5,7 +5,7 @@ import { getStorage } from "firebase/storage";
 
 
 const firebaseConfig = {
-  apiKey: "import.meta.env.VITE_FIREBASE_API_KEY",
+  apiKey:import.meta.env.VITE_API_KEY,
   authDomain: "egogo-chat.firebaseapp.com",
   projectId: "egogo-chat",
   storageBucket: "egogo-chat.firebasestorage.app",
