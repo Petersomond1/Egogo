@@ -1,11 +1,10 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-
 const firebaseConfig = {
-  apiKey:import.meta.env.VITE_API_KEY,
+  apiKey: import.meta.env.VITE_API_KEY,
   authDomain: "egogo-chat.firebaseapp.com",
   projectId: "egogo-chat",
   storageBucket: "egogo-chat.firebasestorage.app",
@@ -14,8 +13,8 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-export const auth = getAuth();  //To authenticate users
-export const db = getFirestore();   //To store chat messages, user data, etc.
-export const storage = getStorage();    //To store images, videos, etc.
+export const auth = getAuth(app);  // Pass the app instance
+export const db = getFirestore(app);   // Pass the app instance
+export const storage = getStorage(app);    // Pass the app instance

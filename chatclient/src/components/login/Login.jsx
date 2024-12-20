@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import './Login.css';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { toast } from 'react-toastify';
-import { auth } from '../lib/firebase.js';
+ import { auth } from '../lib/firebase'; // wked when off here and user true at Api.jsx showed home page too. but ReferenceError: auth is not defined
+
 
 const Login = () => {
     const [avatar, setAvatar] = useState({ file: null, url: '' });
@@ -11,6 +12,7 @@ const Login = () => {
     const handleAvatar = (e) => {
         setAvatar({ file: e.target.files[0], url: URL.createObjectURL(e.target.files[0]) });
     };
+
     const handleRegister = async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
@@ -19,9 +21,7 @@ const Login = () => {
 
         try {
             const res = await createUserWithEmailAndPassword(auth, email, password);
-            
-
-
+            toast.success("User registered successfully!");
         } catch (err) {
             console.log(err);
             toast.error(err.message);
