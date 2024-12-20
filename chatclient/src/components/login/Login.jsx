@@ -5,10 +5,14 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { toast } from 'react-toastify';
 import { auth, db } from '../lib/firebase'; // ../lib/firebase. wked when off here and user true at Api.jsx showed home page too. but ReferenceError: auth is not defined
 import { doc, setDoc } from 'firebase/firestore';
+import Upload from '../lib/Upload';
+
 
 
 const Login = () => {
     const [avatar, setAvatar] = useState({ file: null, url: '' });
+
+    const [loading, setLoading] = useState(false);
 
     const handleAvatar = (e) => {
         setAvatar({ file: e.target.files[0], url: URL.createObjectURL(e.target.files[0]) });
@@ -16,6 +20,7 @@ const Login = () => {
 
     const handleRegister = async (e) => {
         e.preventDefault();
+        setLoading(true);
         const formData = new FormData(e.target);
 
         const { username, email, password } = Object.fromEntries(formData);
@@ -23,9 +28,12 @@ const Login = () => {
         try {
             const res = await createUserWithEmailAndPassword(auth, email, password);
 
+            const imgUrl = await Upload(avatar.file);
+
             await setDoc(doc(db, 'users', res.user.uid), {
                 username,
                 email,
+                avatar: imgUrl,
                 id: res.user.uid,
                 blocked: [],
             });
@@ -39,6 +47,8 @@ const Login = () => {
         } catch (err) {
             console.log(err);
             toast.error(err.message);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -55,7 +65,7 @@ const Login = () => {
                 <form onSubmit={handleLogin}>
                     <input type="email" placeholder="Email" name="email" />
                     <input type="password" placeholder="Password" name="password" />
-                    <button type="submit">Login</button>
+                    <button disabled={loading} type="submit">Login</button>
                 </form>
             </div>
             <div className="separator"></div>
@@ -70,7 +80,7 @@ const Login = () => {
                     <input type="text" placeholder="Username" name="username" />
                     <input type="email" placeholder="Email" name="email" />
                     <input type="password" placeholder="Password" name="password" />
-                    <button type="submit">Sign Up</button>
+                    <button disabled={loading} type="submit">Sign Up</button>
                 </form>
             </div>
         </div>
