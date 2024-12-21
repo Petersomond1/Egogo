@@ -7,6 +7,7 @@ import Notification from "./components/notification/Notification"
 import { onAuthStateChanged } from "firebase/auth"
 import { auth } from "./components/lib/firebase"
 import { toast } from "react-toastify"
+import { useUserStore } from "./components/lib/userStore"
 
 
 const App = () => {
@@ -32,14 +33,14 @@ return () => {unSub()}
 
   }, [fetchUserInfo]);
 
-  console.log(currentUser)
+  console.log("currentUser", currentUser)
 
   if (isLoading) return <div className="loading">"Loading..."</div>
   // if (isLoading) return <Notification text="Loading..." />
-
+//Note that currentUser was initially user
   return (
     <>
-    <div className='container'> //currentUser was initially user
+    <div className='container'> 
       {currentUser ? (
         <>
           <List />
