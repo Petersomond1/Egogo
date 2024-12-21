@@ -1,5 +1,6 @@
 import React from 'react'
 import './detail.css'
+import { auth } from '../lib/firebase'
 
 const Detail = () => {
     return (
@@ -55,7 +56,7 @@ const Detail = () => {
                 </div>
                 
                 <button>Block User</button>
-                <button className='logout'>Logout</button>
+                <button className='logout' onClick={()=>auth.signOut()}>Logout</button> //this onclick changes the state of the user to null. appllied at APP.jsx useEffect.
                
             </div>
         </div>
