@@ -57,6 +57,11 @@
                 cursor: pointer;
                 border-radius: 5px;
                 font-weight:500px;
+
+                &.disabled{
+                    background-color: gray;
+                    cursor: not-allowed;
+                }
             }
         }
     }

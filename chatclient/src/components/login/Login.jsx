@@ -1,7 +1,7 @@
 // filepath: /Egogo/chatclient/src/components/login/Login.jsx
 import React, { useState } from 'react';
 import './Login.css';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 import { toast } from 'react-toastify';
 import { auth, db } from '../lib/firebase'; // ../lib/firebase. wked when off here and user true at Api.jsx showed home page too. but ReferenceError: auth is not defined
 import { doc, setDoc } from 'firebase/firestore';
@@ -52,10 +52,26 @@ const Login = () => {
         }
     };
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        // console.log('Login');
-        toast.warn("");
+        setLoading(true);
+
+        const formData = new FormData(e.target);
+
+        const { email, password } = Object.fromEntries(formData);
+
+
+        try {
+            await signInWithEmailAndPassword(auth, email, password );
+            
+        } catch (err) {
+            console.log(err);
+            toast.error(err.message);
+            
+        }
+       finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -65,7 +81,7 @@ const Login = () => {
                 <form onSubmit={handleLogin}>
                     <input type="email" placeholder="Email" name="email" />
                     <input type="password" placeholder="Password" name="password" />
-                    <button disabled={loading} type="submit">Login</button>
+                    <button disabled={loading} type="submit">{loading ? "loading" : "Login"}</button>
                 </form>
             </div>
             <div className="separator"></div>
@@ -80,7 +96,7 @@ const Login = () => {
                     <input type="text" placeholder="Username" name="username" />
                     <input type="email" placeholder="Email" name="email" />
                     <input type="password" placeholder="Password" name="password" />
-                    <button disabled={loading} type="submit">Sign Up</button>
+                    <button disabled={loading} type="submit">{loading ? "loading" : "Sign up"}</button>
                 </form>
             </div>
         </div>
