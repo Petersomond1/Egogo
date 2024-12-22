@@ -1,8 +1,8 @@
-import {react, useEffect, useState} from 'react';
+import {React, useEffect, useState} from 'react';
 import './chatlist.css';
 import AddUser from './addUser/AddUser';
 import {useUserStore} from '../../lib/userStore';
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { db } from '../../lib/firebase';
 
 const Chatlist = () => {
@@ -13,10 +13,10 @@ const Chatlist = () => {
 
     useEffect(() => {
         // doc becomes res
+        if (!currentUser) return;
                     const unsub = onSnapshot(doc(db, "userchats", currentUser.id), async (res) => {
-                        console.log("Current data: ", doc.data());
-                        const items = res.data().chats;
-
+                        // console.log("Current data: ", doc.data());
+                        const items = res.data()?.chats || [];  // we get the chats array from the userchats document.
                       //  setChats(doc.data());
 
                       const promises = items.map(async item => {
@@ -25,10 +25,10 @@ const Chatlist = () => {
 
                             const user = userDocSnap.data();
 
-                            return {...items, receiver: user};
+                            return {...items, user};
                       });
                       const chatData = await Promise.all(promises);
-                        setChats(chatData).sort((a, b)=> b.updatedAt - a.UpdatedAt);         // setChats(doc.data()); and you sort() the chats array by the lastMessage timestamp.
+                        setChats(chatData.sort((a, b)=> b.updatedAt - a.UpdatedAt));         // setChats(doc.data()); and you sort() the chats array by the lastMessage timestamp.
                     }); 
                     return () => unsub();
     }, [currentUser.id])
@@ -45,22 +45,15 @@ const Chatlist = () => {
         </div>
 
         {chats.map(chat => (
-
         <div className="item" key={chat.chatId}>
-            <img src="./avatar.png" alt="" />
+            <img src={chat.user.avatar || "./avatar.png" }alt="" />
             <div className="texts">
-                <h2>Monday P</h2>
-                <p>hello</p>
-                <p>12:00</p>
-
+                <span>{chat.user?.username}</span>
                 <p>{chat.lastMessage}</p>
+                {/* <p>{new Date(chat.updatedAt).toLocaleTimeString()}</p> */}
             </div>
-            <p>13:00</p>
         </div>
         ))}
-
-
-        
        {addMode && <AddUser />}
         </div>
     )
