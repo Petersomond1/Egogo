@@ -1,11 +1,33 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './chat.css';
 import EmojiPicker from 'emoji-picker-react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { useChatStore } from '../lib/chatStore';
 
 const Chat = () => {
+    const [chat, setChat] = React.useState(null);
     const [open, setOpen] = React.useState(false);
     const [text, setText] = React.useState('');
+
+    const { chatId } = useChatStore();
+
     const endRef = useRef(null);
+
+    useEffect(() => {
+endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, []);
+
+    useEffect(() => {
+        //chatId was used to replace the hardcoded chatId at create of chatStore
+        //we go do logic at app.jsx for chatId presence
+        const unSub = onSnapshot(doc(db, "chats",  chatId), (res) => {
+            setChat(res.data());
+        }); 
+        return () => unSub();
+    }, [chatId]);
+    
+    console.log(chat);
 
     const handleEmoji = (e) => {
        setText((prev) => prev + e.emoji);
@@ -42,78 +64,77 @@ const Chat = () => {
                 </div>
             </div>
             <div className="center">
-                <div className="message">
+            {chat?.messages?.map((message, index) => (
+                <div key={index}>
+                  <div className={`message ${message.senderId === "SE40NtRoPFMvqJero3xH9VU8nvY2" ? "own" : ""}`}>
                     <img src="./avatar.png" alt="" />
                     <div className="texts">
-                        <p>
-                            Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
-                            Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
-                            adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
-                            vitae, atque perspiciatis magnam consectetur error!
-                        </p>
-                        <span>1 min ago</span>
+                        <p>{message.text}</p>
+                        <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
                     </div>
+                  </div>
+                  <div className="message own">
+                      <div className="texts">
+                          <img src="./image.png" alt="" />
+                          <p>
+                              Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
+                              Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
+                              adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
+                              vitae, atque perspiciatis magnam consectetur error!
+                          </p>
+                          <span>1 min ago</span>
+                      </div>
+                  </div>
+                  <div className="message">
+                      <img src="./avatar.png" alt="" />
+                      <div className="texts">
+                          <p>
+                              Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
+                              Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
+                              adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
+                              vitae, atque perspiciatis magnam consectetur error!
+                          </p>
+                          <span>1 min ago</span>
+                      </div>
+                  </div>
+                  <div className="message own">
+                      <div className="texts">
+                          <img src="./image.png" alt="" />
+                          <p>
+                              Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
+                              Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
+                              adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
+                              vitae, atque perspiciatis magnam consectetur error!
+                          </p>
+                          <span>1 min ago</span>
+                      </div>
+                  </div>
+                  <div className="message">
+                      <img src="./avatar.png" alt="" />
+                      <div className="texts">
+                          <p>
+                              Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
+                              Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
+                              adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
+                              vitae, atque perspiciatis magnam consectetur error!
+                          </p>
+                          <span>1 min ago</span>
+                      </div>
+                  </div>
+                  <div className="message own">
+                      <div className="texts">
+                          <img src="./image.png" alt="" />
+                          <p>
+                              Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
+                              Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
+                              adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
+                              vitae, atque perspiciatis magnam consectetur error!
+                          </p>
+                          <span>1 min ago</span>
+                      </div>
+                  </div>
                 </div>
-                <div className="message own">
-                    <div className="texts">
-                        <img src="./image.png" alt="" />
-                        <p>
-                            Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
-                            Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
-                            adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
-                            vitae, atque perspiciatis magnam consectetur error!
-                        </p>
-                        <span>1 min ago</span>
-                    </div>
-                </div>
-                <div className="message">
-                    <img src="./avatar.png" alt="" />
-                    <div className="texts">
-                        <p>
-                            Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
-                            Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
-                            adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
-                            vitae, atque perspiciatis magnam consectetur error!
-                        </p>
-                        <span>1 min ago</span>
-                    </div>
-                </div>
-                <div className="message own">
-                    <div className="texts">
-                        <img src="./image.png" alt="" />
-                        <p>
-                            Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
-                            Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
-                            adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
-                            vitae, atque perspiciatis magnam consectetur error!
-                        </p>
-                        <span>1 min ago</span>
-                    </div>
-                </div>
-                <div className="message">
-                    <img src="./avatar.png" alt="" />
-                    <div className="texts">
-                        <p>
-                            Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
-                            Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
-                            adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
-                            vitae, atque perspiciatis magnam consectetur error!
-                        </p>
-                        <span>1 min ago</span>
-                    </div>
-                </div>
-                <div className="message own">
-                    <div className="texts">
-                        <img src="./image.png" alt="" />
-                        <p>
-                            Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
-                            Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
-                            adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
-                            vitae, atque perspiciatis magnam consectetur error!
-                        </p>
-                        <span>1 min ago</span>
-                    </div>
-                </div>
+            ))}
                 {/* Add more messages here */}
                 <div ref={endRef} />
             </div>

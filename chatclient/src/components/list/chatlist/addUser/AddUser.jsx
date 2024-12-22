@@ -64,6 +64,8 @@ const handleAdd = async () => {
                     updatedAt: Date.now(),      
                 }),
             });
+
+            console.log("Chat created successfully!", newChatRef.id);
         } catch (err) {
             console.log(err);
         }

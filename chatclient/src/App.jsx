@@ -8,6 +8,7 @@ import { onAuthStateChanged } from "firebase/auth"
 import { auth } from "./components/lib/firebase"
 import { toast } from "react-toastify"
 import { useUserStore } from "./components/lib/userStore"
+import { useChatStore } from "./components/lib/chatStore"
 
 
 const App = () => {
@@ -17,6 +18,7 @@ const App = () => {
   // we remove it when we want to start store/state mgmt and tools
 
 const {currentUser, isLoading, fetchUserInfo} = useUserStore()
+const {chatId} = useChatStore()
 
   useEffect(() => {
     const unSub = onAuthStateChanged(auth, (user) => {
@@ -44,8 +46,8 @@ return () => {unSub()}
       {currentUser ? (
         <>
           <List />
-          <Chat />
-          <Detail />
+          {chatId && <Chat />}
+          {chatId && <Detail />}
         </>
       ) : (
         <Login/>
