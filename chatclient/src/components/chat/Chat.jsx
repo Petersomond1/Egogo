@@ -1,16 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './chat.css';
 import EmojiPicker from 'emoji-picker-react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { arrayUnion, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useChatStore } from '../lib/chatStore';
+import { useUserStore } from '../lib/userStore';
 
 const Chat = () => {
-    const [chat, setChat] = React.useState(null);
+    const [chat, setChat] = React.useState();
     const [open, setOpen] = React.useState(false);
     const [text, setText] = React.useState('');
 
-    const { chatId } = useChatStore();
+    const { currentUser } = useUserStore();
+    const { chatId, user } = useChatStore();
 
     const endRef = useRef(null);
 
@@ -46,9 +48,55 @@ endRef.current?.scrollIntoView({ behavior: 'smooth' });
         scrollToBottom();
     }, [text]);
 
-    console.log(text);
+    const handleSend = async () => {
+        if (text === "") return;
+
+        try {
+            await updateDoc(doc(db, "chats", chatId), {
+                messages: arrayUnion({
+                    senderId: currentUser.id,
+                    text,
+                    createdAt: new Date(),
+                }),
+            });
+
+            const userIDs = [currentUser.id, user.id];
+
+            
+            userIDs.forEach(async (id) => {
+
+            const userChatsRef = doc(db, "userchats", id);
+            const userChatsSnap = await getDoc(userChatsRef);
+
+            if(userChatsSnap.exists()){
+               const userChatsData = userChatsSnap.data();
+                const chatIndex = userChatsData.chats.findIndex((chat) => chat.chatId === chatId);
+            
+                userChatsData.chats[chatIndex].lastMessage = text;
+                userChatsData[chatIndex].isSeen = id === currentUser.id ? true : false;
+                userChatsData[chatIndex].updatedAt = Date.now();
+
+                await updateDoc(userChatsRef, {
+                    chats: userChatsData.chats,
+                });
+
+           
+            }
+        });
+
+        } catch (err) {
+            console.log(err);
+            
+        }
+
+
+
+    };
+
+  
     return (
-        <div className="chat_container">
+      <>
+             <div className="chat_container">
             <div className="top">
                 <div className="user">
                     <img src="./avatar.png" alt="" />
@@ -63,81 +111,24 @@ endRef.current?.scrollIntoView({ behavior: 'smooth' });
                     <img src="./info.png" alt="" />
                 </div>
             </div>
+
+
+
             <div className="center">
-            {chat?.messages?.map((message, index) => (
-                <div key={index}>
-                  <div className={`message ${message.senderId === "SE40NtRoPFMvqJero3xH9VU8nvY2" ? "own" : ""}`}>
-                    <img src="./avatar.png" alt="" />
-                    <div className="texts">
-                        <p>{message.text}</p>
-                        <span>{new Date(message.timestamp).toLocaleTimeString()}</span>
-                    </div>
-                  </div>
-                  <div className="message own">
+                  {chat?.messages?.map((message) => (
+                  <div className="message own" key = {message?.creadtedAt}>
                       <div className="texts">
-                          <img src="./image.png" alt="" />
+                         {message.img && <img src={message.img} alt="" />}
                           <p>
-                              Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
-                              Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
-                              adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
-                              vitae, atque perspiciatis magnam consectetur error!
+                             {message.text}
                           </p>
-                          <span>1 min ago</span>
                       </div>
                   </div>
-                  <div className="message">
-                      <img src="./avatar.png" alt="" />
-                      <div className="texts">
-                          <p>
-                              Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
-                              Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
-                              adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
-                              vitae, atque perspiciatis magnam consectetur error!
-                          </p>
-                          <span>1 min ago</span>
-                      </div>
-                  </div>
-                  <div className="message own">
-                      <div className="texts">
-                          <img src="./image.png" alt="" />
-                          <p>
-                              Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
-                              Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
-                              adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
-                              vitae, atque perspiciatis magnam consectetur error!
-                          </p>
-                          <span>1 min ago</span>
-                      </div>
-                  </div>
-                  <div className="message">
-                      <img src="./avatar.png" alt="" />
-                      <div className="texts">
-                          <p>
-                              Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
-                              Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
-                              adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
-                              vitae, atque perspiciatis magnam consectetur error!
-                          </p>
-                          <span>1 min ago</span>
-                      </div>
-                  </div>
-                  <div className="message own">
-                      <div className="texts">
-                          <img src="./image.png" alt="" />
-                          <p>
-                              Lorem, ipsum dolor sit amet consectetur adipisicing elit. 
-                              Animi repudiandae fugit ratione dolorem eos temporibus quaerat 
-                              adipisci saepe accusantium blanditiis molestias quo rerum fugiat,
-                              vitae, atque perspiciatis magnam consectetur error!
-                          </p>
-                          <span>1 min ago</span>
-                      </div>
-                  </div>
-                </div>
             ))}
                 {/* Add more messages here */}
-                <div ref={endRef} />
+                <div ref={endRef}></div>
             </div>
+
             <div className="bottom">
                 <div className="icons">
                     <img src="./img.png" alt="" />
@@ -151,9 +142,15 @@ endRef.current?.scrollIntoView({ behavior: 'smooth' });
                         <EmojiPicker open={open} onEmojiClick={handleEmoji} />
                     </div>
                 </div>
-                <button className="sendbutton">Send</button>
+                <button className="sendbutton" onClick={handleSend}>Send</button>
             </div>
-        </div>
+
+
+            
+           </div>
+
+
+        </>
     );
 };
 
