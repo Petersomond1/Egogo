@@ -70,11 +70,12 @@ endRef.current?.scrollIntoView({ behavior: 'smooth' });
 
             if(userChatsSnap.exists()){
                const userChatsData = userChatsSnap.data();
+
                 const chatIndex = userChatsData.chats.findIndex((chat) => chat.chatId === chatId);
             
                 userChatsData.chats[chatIndex].lastMessage = text;
-                userChatsData[chatIndex].isSeen = id === currentUser.id ? true : false;
-                userChatsData[chatIndex].updatedAt = Date.now();
+                userChatsData.chats[chatIndex].isSeen = id === currentUser.id ? true : false;
+                userChatsData.chats[chatIndex].updatedAt = Date.now();
 
                 await updateDoc(userChatsRef, {
                     chats: userChatsData.chats,
