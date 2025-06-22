@@ -7,7 +7,9 @@
 }
 
 body {
-  background-image: url('bg.jpg');
+  /* background-image: url('bg.jpg'); */
+  /* background-image: url('sky.png'); */
+  background-image: url('iko background4.png');
   display: flex;
   align-items: center;
   justify-content: center;

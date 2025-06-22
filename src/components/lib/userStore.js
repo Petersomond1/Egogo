@@ -1,35 +1,46 @@
-import { create } from 'zustand'
-import { db } from '../lib/firebase'
-import { doc, getDoc } from 'firebase/firestore'
-
-
+import { doc, getDoc } from 'firebase/firestore';
+import { create } from 'zustand';
+import { db } from './firebase';
 
 export const useUserStore = create((set) => ({
   currentUser: null,
-    isLoading: true,
- fetchUserInfo: async(uid) =>{
-    if (!uid) return set({ currentUser: null, isLoading: false });
-
-    try {
-
-        const docRef = doc(db, "users", uid);   // called a reference to the document
-        const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-        set({ currentUser: docSnap.data(), isLoading: false });
-    }else{
-        set({ currentUser: null, isLoading: false });
-        console.log("No such document!");
-    }    
-    } catch (err) {
-        console.log(err);
-         set({ currentUser: null, isLoading: false });
-        
+  isLoading: true,
+  
+  fetchUserInfo: async (uid) => {
+    console.log("🔍 fetchUserInfo called with UID:", uid);
+    
+    if (!uid) {
+      console.log("🔍 No UID provided, setting currentUser to null");
+      set({ currentUser: null, isLoading: false });
+      return;
     }
 
- }
+    try {
+      console.log("🔍 Fetching user document from Firestore...");
+      const docRef = doc(db, "users", uid);
+      const docSnap = await getDoc(docRef);
 
-}))
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+        console.log("✅ User document found:", userData);
+        set({ currentUser: userData, isLoading: false });
+      } else {
+        console.log("❌ No user document found in Firestore for UID:", uid);
+        console.log("🔧 This usually means the user registered but the Firestore document wasn't created properly");
+        
+        // Set currentUser to null so the "Create Missing Profile" button appears
+        set({ currentUser: null, isLoading: false });
+      }
+    } catch (err) {
+      console.error("❌ Error fetching user info:", err);
+      console.error("Error code:", err.code);
+      console.error("Error message:", err.message);
+      
+      // On error, also set currentUser to null
+      set({ currentUser: null, isLoading: false });
+    }
+  },
+}));
 
 //   increasePopulation: () => set((state) => ({ bears: state.bears + 1 })),
 //   removeAllBears: () => set({ bears: 0 }),
