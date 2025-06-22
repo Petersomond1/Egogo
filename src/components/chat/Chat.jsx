@@ -19,11 +19,11 @@ const Chat = () => {
     const endRef = useRef(null);
 
     // Debug logging for user avatar
-    console.log("🔍 Chat Component Debug:");
-    console.log("- Current user:", currentUser);
-    console.log("- Chat user:", user);
-    console.log("- Chat user avatar:", user?.avatar);
-    console.log("- Current user avatar:", currentUser?.avatar);
+    // console.log("🔍 Chat Component Debug:");
+    // console.log("- Current user:", currentUser);
+    // console.log("- Chat user:", user);
+    // console.log("- Chat user avatar:", user?.avatar);
+    // console.log("- Current user avatar:", currentUser?.avatar);
 
     useEffect(() => {
         endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -149,83 +149,101 @@ const Chat = () => {
     };
 
     return (
-        <>
-            <div className="chat_container">
-                <div className="top">
-                    <div className="user">
-                        <Avatar 
-                            src={user?.avatar} 
-                            alt="Chat user avatar"
-                        />
-                        <div className="texts">
-                            <span>{user?.username || "John Doe"}</span>
-                            <p>Lorem ipsum dolor sit.</p>
-                        </div>
-                    </div>
-                    <div className="icons">
-                        <img src="./phone.png" alt="" />
-                        <img src="./video.png" alt="" />
-                        <img src="./info.png" alt="" />
-                    </div>
-                </div>
-
-                <div className="center">
-                    {chat?.messages?.map((message, index) => (
-                        <div className={message.senderId === currentUser?.id ? "message own" : "message"} key={index}>
-                            <div className="texts">
-                                {message.img && (
-                                    <Avatar 
-                                        src={message.img} 
-                                        alt="Message image"
-                                    />
-                                )}
-                                <p>{message.text}</p>
-                                <span>{new Date(message.createdAt?.toDate ? message.createdAt.toDate() : message.createdAt).toLocaleTimeString()}</span>
-                            </div>
-                        </div>
-                    ))}
-                    {img.url && (
-                        <div className="message own">
-                            <div className="texts">
-                                <Avatar 
-                                    src={img.url} 
-                                    alt="Preview image"
-                                />
-                            </div>
-                        </div>
-                    )}
-                    <div ref={endRef}></div>
-                </div>
-
-                <div className="bottom">
-                    <div className="icons">
-                        <label htmlFor="file">
-                            <img src="./img.png" alt="" />
-                        </label>
-                        <input type="file" id="file" style={{ display: 'none' }} onChange={handleImg} accept="image/*" />
-                        <img src="./camera.png" alt="" />
-                        <img src="./mic.png" alt="" />
-                    </div>
-                    <input 
-                        type="text" 
-                        placeholder={(isCurrentUserBlocked || IsReceiverBlocked) ? "You cannot Send a message " : "Type a message..."} 
-                        value={text} 
-                        onChange={e => setText(e.target.value)} 
-                        disabled={isCurrentUserBlocked || IsReceiverBlocked}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                    />
-                    <div className="emoji">
-                        <img src="./emoji.png" alt="" onClick={() => setOpen(!open)} />
-                        <div className="picker">
-                            <EmojiPicker open={open} onEmojiClick={handleEmoji} />
-                        </div>
-                    </div>
-                    <button className="sendbutton" onClick={handleSend} disabled={isCurrentUserBlocked || IsReceiverBlocked}>
-                        Send
-                    </button>
-                </div>
+      <>
+        <div className="chat_container">
+          <div className="top">
+            <div className="user">
+              <Avatar src={user?.avatar} alt="Chat user avatar" />
+              <div className="texts">
+                <span>{user?.username || "John Doe"}</span>
+                <p>Lorem ipsum dolor sit.</p>
+              </div>
             </div>
-        </>
+            <div className="icons">
+              <img src="./phone.png" alt="" />
+              <img src="./video.png" alt="" />
+              <img src="./info.png" alt="" />
+            </div>
+          </div>
+
+          <div className="center">
+            {chat?.messages?.map((message, index) => (
+              <div
+                className={
+                  message.senderId === currentUser?.id
+                    ? "message own"
+                    : "message"
+                }
+                key={index}
+              >
+                <div className="texts">
+                  {message.img && (
+                    <Avatar src={message.img} alt="Message image" />
+                  )}
+                  <p>{message.text}</p>
+                  <span>
+                    {new Date(
+                      message.createdAt?.toDate
+                        ? message.createdAt.toDate()
+                        : message.createdAt
+                    ).toLocaleTimeString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+            {img.url && (
+              <div className="message own">
+                <div className="texts">
+                  <Avatar src={img.url} alt="Preview image" />
+                </div>
+              </div>
+            )}
+            <div ref={endRef}></div>
+          </div>
+
+          <div className="bottom">
+            <div className="icons">
+              <label htmlFor="file">
+                <img src="./img.png" alt="" />
+              </label>
+              <input
+                type="file"
+                id="file"
+                style={{ display: "none" }}
+                onChange={handleImg}
+                accept="image/*"
+              />
+              <img src="./camera.png" alt="" />
+              <img src="./mic.png" alt="" />
+            </div>
+            <input
+              type="text"
+              placeholder={
+                isCurrentUserBlocked || IsReceiverBlocked
+                  ? "You cannot Send a message "
+                  : "Type a message..."
+              }
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              disabled={isCurrentUserBlocked || IsReceiverBlocked}
+              onkeyPress={(e) => e.key === "Enter" && handleSend()}
+            />
+            <div className="emoji">
+              <img src="./emoji.png" alt="" onClick={() => setOpen(!open)} />
+              <div className="picker">
+                <EmojiPicker open={open} onEmojiClick={handleEmoji} />
+              </div>
+            </div>
+            <button
+              className="sendbutton"
+              onClick={handleSend}
+              disabled={isCurrentUserBlocked || IsReceiverBlocked}
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      </>
     );
 };
 

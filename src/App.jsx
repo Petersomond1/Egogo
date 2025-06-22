@@ -15,16 +15,16 @@ const App = () => {
   const { currentUser, isLoading, fetchUserInfo } = useUserStore();
   const { chatId } = useChatStore();
 
-  console.log("🔍 App Debug Info:");
-  console.log("Firebase Auth instance:", auth);
+  // console.log("🔍 App Debug Info:");
+  // console.log("Firebase Auth instance:", auth);
 
   useEffect(() => {
     const unSub = onAuthStateChanged(auth, async (user) => { // Made callback async
       console.log("🔍 Auth state changed:", user ? "User logged in" : "User logged out");
       
       if (user) {
-        console.log("🔍 User ID:", user.uid);
-        console.log("🔍 User Email:", user.email);
+        // console.log("🔍 User ID:", user.uid);
+        // console.log("🔍 User Email:", user.email);
 
         try {
           // Check if user document exists in Firestore
@@ -57,16 +57,16 @@ const App = () => {
           await fetchUserInfo(user.uid);
           
         } catch (error) {
-          console.error("❌ Error checking/creating user document:", error);
-          console.error("Error code:", error.code);
-          console.error("Error message:", error.message);
+          // console.error("❌ Error checking/creating user document:", error);
+          // console.error("Error code:", error.code);
+          // console.error("Error message:", error.message);
           
           // Still try to fetch user info even if there was an error
           fetchUserInfo(user.uid);
         }
         
       } else {
-        console.log("🔍 No user logged in");
+        // console.log("🔍 No user logged in");
         fetchUserInfo(null);
       }
     });
@@ -77,18 +77,18 @@ const App = () => {
   }, [fetchUserInfo]);
 
   // Add detailed logging for render decisions
-  console.log("🔍 Current render state:");
-  console.log("- isLoading:", isLoading);
-  console.log("- currentUser:", currentUser);
-  console.log("- chatId:", chatId);
+  // console.log("🔍 Current render state:");
+  // console.log("- isLoading:", isLoading);
+  // console.log("- currentUser:", currentUser);
+  // console.log("- chatId:", chatId);
 
   if (isLoading) {
-    console.log("🔍 Rendering: Loading state");
+    // console.log("🔍 Rendering: Loading state");
     return <div className="loading">Loading...</div>;
   }
 
   if (currentUser) {
-    console.log("🔍 Rendering: Chat interface for user:", currentUser.username);
+    // console.log("🔍 Rendering: Chat interface for user:", currentUser.username);
     return (
       <div className="container">
         <List />

@@ -15,7 +15,7 @@ const [input, setInput] = useState("");
 const { currentUser } = useUserStore();
 const {chatId, changeChat} = useChatStore();
 
-console.log("currentUser", currentUser)
+// console.log("currentUser", currentUser)
 
 useEffect(() => {
     if (!currentUser) return;
@@ -36,7 +36,7 @@ useEffect(() => {
         setChats(chatData.sort((a, b) => b.updatedAt - a.updatedAt));
     });
 
-    console.log("chats", chats);
+    // console.log("chats", chats);
 
     return () => {
         unsub();
@@ -70,7 +70,7 @@ await updateDoc(userChatsRef, {
 
 
 const filteredChats = chats.filter(chat => chat.user.username.toLowerCase().includes(input.toLowerCase()));
-console.log("filteredChats", filteredChats);
+// console.log("filteredChats", filteredChats);
 
 return (
     <div className="chatlist_container">

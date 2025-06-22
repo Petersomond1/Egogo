@@ -14,9 +14,9 @@ const Userinfo = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
 
-    console.log("🔍 UserInfo Debug:");
-    console.log("- Current user:", currentUser);
-    console.log("- Avatar URL:", currentUser?.avatar);
+    // console.log("🔍 UserInfo Debug:");
+    // console.log("- Current user:", currentUser);
+    // console.log("- Avatar URL:", currentUser?.avatar);
 
     // Simple avatar source logic (like Chat.jsx and Chatlist.jsx)
     const getAvatarSrc = () => {
@@ -41,7 +41,7 @@ const Userinfo = () => {
 
     const handleAvatarLoad = () => {
         if (currentUser?.avatar && currentUser.avatar !== "./avatar.png") {
-            console.log("✅ User avatar loaded successfully:", currentUser.avatar);
+            // console.log("✅ User avatar loaded successfully:", currentUser.avatar);
             setAvatarError(false);
         }
     };
@@ -300,7 +300,7 @@ const Userinfo = () => {
             )}
             
             {/* Debug info - remove this in production */}
-            <div style={{ 
+            {/* <div style={{ 
                 fontSize: '10px', 
                 color: '#666', 
                 marginTop: '10px',
@@ -315,7 +315,7 @@ const Userinfo = () => {
                 <div>Using: {getAvatarSrc()}</div>
                 <div>Editing: {isEditingAvatar ? "Yes" : "No"}</div>
                 <div>Selected File: {selectedFile ? selectedFile.name : "None"}</div>
-            </div>
+            </div> */}
         </div>
     );
 };

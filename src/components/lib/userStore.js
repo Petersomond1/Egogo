@@ -7,7 +7,7 @@ export const useUserStore = create((set) => ({
   isLoading: true,
   
   fetchUserInfo: async (uid) => {
-    console.log("🔍 fetchUserInfo called with UID:", uid);
+    // console.log("🔍 fetchUserInfo called with UID:", uid);
     
     if (!uid) {
       console.log("🔍 No UID provided, setting currentUser to null");
@@ -16,13 +16,13 @@ export const useUserStore = create((set) => ({
     }
 
     try {
-      console.log("🔍 Fetching user document from Firestore...");
+      // console.log("🔍 Fetching user document from Firestore...");
       const docRef = doc(db, "users", uid);
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
         const userData = docSnap.data();
-        console.log("✅ User document found:", userData);
+        // console.log("✅ User document found:", userData);
         set({ currentUser: userData, isLoading: false });
       } else {
         console.log("❌ No user document found in Firestore for UID:", uid);
