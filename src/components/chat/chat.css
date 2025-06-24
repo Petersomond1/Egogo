@@ -54,6 +54,7 @@
             }
         }
     }
+    
     .center{
         flex: 1;
         padding: 20px;
@@ -69,6 +70,7 @@
             max-width: 70%;
             display: flex;
             gap: 20px;
+            position: relative;
 
             &.own{
                 align-self: flex-end;
@@ -80,6 +82,30 @@
                 }
                }
             }
+            
+            &.preview{
+                opacity: 0.8;
+                border: 2px dashed #5183fe;
+                border-radius: 10px;
+                padding: 10px;
+                
+                .clear-btn{
+                    position: absolute;
+                    top: -5px;
+                    right: -5px;
+                    background: #ff4757;
+                    color: white;
+                    border: none;
+                    border-radius: 50%;
+                    width: 20px;
+                    height: 20px;
+                    cursor: pointer;
+                    font-size: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+            }
         
         img{
             width: 30px;
@@ -87,6 +113,7 @@
             border-radius: 40%;
             object-fit: cover;
         }
+        
         .texts{
             flex:1;
             display: flex;
@@ -99,6 +126,35 @@
                 border-radius: 10px;
                 object-fit: cover;
             }
+            
+            .audio-player{
+                width: 100%;
+                margin: 5px 0;
+                
+                audio{
+                    width: 100%;
+                    max-width: 300px;
+                    height: 40px;
+                    border-radius: 5px;
+                    background: rgba(17, 25, 40, 0.8);
+                    
+                    &::-webkit-media-controls-panel{
+                        background-color: rgba(17, 25, 40, 0.8);
+                    }
+                }
+            }
+            
+            .video-player{
+                width: 100%;
+                margin: 5px 0;
+                
+                video{
+                    width: 100%;
+                    max-width: 300px;
+                    border-radius: 10px;
+                    background: rgba(17, 25, 40, 0.8);
+                }
+            }
 
             p{
                 padding: 10px;
@@ -106,12 +162,40 @@
                 border-radius: 10px;
                 font-size: 16px;
             }
+            
             span{
                 font-size: 13px;
                 color: #dddddd;
             }
         }
-
+        }
+        
+        /* Recording preview styles */
+        .recording-preview{
+            align-self: flex-end;
+            max-width: 70%;
+            padding: 15px;
+            background: rgba(255, 0, 0, 0.1);
+            border: 2px solid #ff4757;
+            border-radius: 10px;
+            text-align: center;
+            
+            video{
+                border-radius: 10px;
+                margin-bottom: 10px;
+            }
+            
+            p{
+                color: #ff4757;
+                font-weight: bold;
+                margin: 0;
+                animation: pulse 1.5s ease-in-out infinite alternate;
+            }
+        }
+        
+        @keyframes pulse {
+            from { opacity: 0.6; }
+            to { opacity: 1; }
         }
     }
 
@@ -126,18 +210,45 @@
 
         .icons{
             display: flex;
-            gap: 20px;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
         }
 
-         img{
-                width: 20px;
-                height: 20px;
-                cursor: pointer;
+        img{
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            
+            &:hover{
+                transform: scale(1.1);
+                filter: brightness(1.2);
             }
+            
+            &:active{
+                transform: scale(0.95);
+            }
+        }
+        
+        .stop-recording{
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            cursor: pointer;
+            animation: pulse 1.5s ease-in-out infinite alternate;
+            
+            &:hover{
+                background: #ff3838;
+            }
+        }
 
         input{
             flex: 1;
-            background-color: rgba(17, 25, 40, 0.5);;
+            background-color: rgba(17, 25, 40, 0.5);
             border: none;
             outline: none;
             color: white;
@@ -158,6 +269,7 @@
                 position: absolute;
                 bottom: 35px;
                 left: 0;
+                z-index: 1000;
             }
         }
 
@@ -170,6 +282,11 @@
             font-weight: bold;
             cursor: pointer;
             outline: none;
+            transition: background-color 0.2s ease;
+
+            &:hover:not(:disabled){
+                background-color: #4070fd;
+            }
 
             &:disabled{
                 background-color: #5183feb4;
@@ -179,3 +296,53 @@
     }
 }
 
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+    .chat_container {
+        .center {
+            .message {
+                max-width: 85%;
+                
+                .texts {
+                    .audio-player audio,
+                    .video-player video {
+                        max-width: 250px;
+                    }
+                    
+                    img {
+                        height: 200px;
+                    }
+                }
+            }
+        }
+        
+        .bottom {
+            .icons {
+                gap: 10px;
+                
+                img {
+                    width: 18px;
+                    height: 18px;
+                }
+            }
+        }
+    }
+}
+
+/* Dark theme audio/video controls */
+audio::-webkit-media-controls-timeline,
+video::-webkit-media-controls-timeline {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+audio::-webkit-media-controls-volume-slider,
+video::-webkit-media-controls-volume-slider {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+audio::-webkit-media-controls-current-time-display,
+audio::-webkit-media-controls-time-remaining-display,
+video::-webkit-media-controls-current-time-display,
+video::-webkit-media-controls-time-remaining-display {
+    color: white;
+}
