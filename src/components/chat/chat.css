@@ -346,3 +346,484 @@ video::-webkit-media-controls-current-time-display,
 video::-webkit-media-controls-time-remaining-display {
     color: white;
 }
+
+
+
+
+
+/* Chat.css - Enhanced styles for group chat interface */
+.group-avatar-container {
+  position: relative;
+  display: inline-block;
+}
+
+.group-avatar-container .group-indicator {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background: #5183fe;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border: 2px solid white;
+}
+
+.edit-group-name {
+  display: flex;
+  align-items: center;
+}
+
+.edit-group-name input {
+  background: rgba(17, 25, 40, 0.8);
+  border: 1px solid #5183fe;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+.edit-icon {
+  margin-left: 8px;
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.group-info-panel {
+  position: absolute;
+  top: 70px;
+  right: 20px;
+  width: 300px;
+  max-height: 500px;
+  background: rgba(17, 25, 40, 0.95);
+  border: 1px solid rgba(221, 221, 221, 0.2);
+  border-radius: 10px;
+  padding: 20px;
+  z-index: 1000;
+  overflow-y: auto;
+  backdrop-filter: blur(10px);
+}
+
+.group-info-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.group-info-header h3 {
+  margin: 0;
+  color: white;
+}
+
+.group-info-header button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.group-members {
+  margin-bottom: 20px;
+}
+
+.group-members h4 {
+  margin: 0 0 15px 0;
+  color: #5183fe;
+  font-size: 16px;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(221, 221, 221, 0.1);
+}
+
+.member-item:last-child {
+  border-bottom: none;
+}
+
+.member-item img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.member-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.member-info span:first-child {
+  color: white;
+  font-weight: 500;
+}
+
+.member-role {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: capitalize;
+}
+
+.remove-member-btn {
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.3s ease;
+}
+
+.remove-member-btn:hover {
+  background: #ff5252;
+}
+
+.group-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.group-actions button {
+  padding: 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s ease;
+}
+
+.group-actions button:first-child {
+  background: #5183fe;
+  color: white;
+}
+
+.group-actions button:first-child:hover {
+  background: #4169e1;
+}
+
+.delete-group-btn {
+  background: #ff6b6b !important;
+  color: white !important;
+}
+
+.delete-group-btn:hover {
+  background: #ff5252 !important;
+}
+
+.leave-group-btn {
+  width: 100%;
+  padding: 10px;
+  background: #ff9800;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-top: 20px;
+  transition: background 0.3s ease;
+}
+
+.leave-group-btn:hover {
+  background: #f57c00;
+}
+
+.add-members-section {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(221, 221, 221, 0.2);
+}
+
+.add-members-section h4 {
+  margin: 0 0 15px 0;
+  color: #5183fe;
+  font-size: 16px;
+}
+
+.search-users input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid rgba(221, 221, 221, 0.3);
+  border-radius: 5px;
+  background: rgba(17, 25, 40, 0.5);
+  color: white;
+  margin-bottom: 15px;
+}
+
+.search-users input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.search-results {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(221, 221, 221, 0.1);
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.search-result-item span {
+  flex: 1;
+  color: white;
+}
+
+.search-result-item button {
+  background: #5183fe;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.3s ease;
+}
+
+.search-result-item button:hover {
+  background: #4169e1;
+}
+
+/* Message styles for group chat */
+.message.system {
+  text-align: center;
+  margin: 10px 0;
+}
+
+.message.system .texts {
+  background: rgba(81, 131, 254, 0.2);
+  border-radius: 15px;
+  padding: 8px 15px;
+  display: inline-block;
+}
+
+.message.system .texts p {
+  color: rgba(255, 255, 255, 0.8);
+  font-style: italic;
+  font-size: 14px;
+  margin: 0;
+}
+
+.sender-name {
+  font-size: 12px;
+  color: #5183fe;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+/* Responsive design for group info panel */
+@media (max-width: 768px) {
+  .group-info-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+    padding: 20px;
+  }
+  
+  .group-info-header {
+    position: sticky;
+    top: 0;
+    background: rgba(17, 25, 40, 0.95);
+    padding: 10px 0;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(221, 221, 221, 0.2);
+  }
+}
+
+/* Enhanced selected users display */
+.selected-users-list {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+/* Improved button states */
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Loading states */
+.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Enhanced avatar display */
+.avatar-container img,
+.group-avatar-container img {
+  transition: transform 0.2s ease;
+}
+
+.avatar-container img:hover,
+.group-avatar-container img:hover {
+  transform: scale(1.05);
+}
+
+/* Custom scrollbar for panels */
+.group-info-panel::-webkit-scrollbar,
+.search-results::-webkit-scrollbar,
+.selected-users-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.group-info-panel::-webkit-scrollbar-track,
+.search-results::-webkit-scrollbar-track,
+.selected-users-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.group-info-panel::-webkit-scrollbar-thumb,
+.search-results::-webkit-scrollbar-thumb,
+.selected-users-list::-webkit-scrollbar-thumb {
+  background: rgba(81, 131, 254, 0.6);
+  border-radius: 3px;
+}
+
+.group-info-panel::-webkit-scrollbar-thumb:hover,
+.search-results::-webkit-scrollbar-thumb:hover,
+.selected-users-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(81, 131, 254, 0.8);
+}
+
+/* Animation for adding/removing elements */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.member-item,
+.selected-user,
+.search-result-item {
+  animation: slideIn 0.3s ease;
+}
+
+/* Enhanced form styling */
+.addUser form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.addUser form input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid rgba(221, 221, 221, 0.3);
+  border-radius: 5px;
+  background: rgba(17, 25, 40, 0.5);
+  color: white;
+}
+
+.addUser form input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.addUser form button {
+  padding: 10px 20px;
+  background: #5183fe;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.addUser form button:hover:not(:disabled) {
+  background: #4169e1;
+}
+
+/* User detail styling */
+.addUser .user {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px;
+  background: rgba(17, 25, 40, 0.3);
+  border-radius: 10px;
+  margin: 10px 0;
+  border: 1px solid rgba(221, 221, 221, 0.2);
+}
+
+.addUser .user .detail {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.addUser .user .detail img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.addUser .user .detail div {
+  display: flex;
+  flex-direction: column;
+}
+
+.addUser .user .detail span {
+  color: white;
+  font-weight: 500;
+}
+
+.addUser .user button {
+  padding: 8px 16px;
+  background: #5183fe;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.addUser .user button:hover:not(:disabled) {
+  background: #4169e1;
+}
+
+.addUser .user button:disabled {
+  background: #666;
+  cursor: not-allowed;
+}

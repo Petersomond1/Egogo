@@ -64,3 +64,136 @@
         }
     }
 }
+
+
+
+/* AddUser.css - Enhanced styles for group creation */
+.addUser {
+  padding: 20px;
+  border-bottom: 1px solid rgba(221, 221, 221, 0.2);
+}
+
+.mode-toggle {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.mode-toggle button {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  background: transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mode-toggle button.active {
+  background: #5183fe;
+  color: white;
+  border-color: #5183fe;
+}
+
+.group-name-input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  background: rgba(17, 25, 40, 0.5);
+  color: white;
+}
+
+.group-name-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.selected-users {
+  margin: 15px 0;
+  padding: 15px;
+  background: rgba(17, 25, 40, 0.3);
+  border-radius: 10px;
+}
+
+.selected-users h4 {
+  margin: 0 0 10px 0;
+  color: #5183fe;
+}
+
+.selected-users-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.selected-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  background: rgba(81, 131, 254, 0.2);
+  border-radius: 20px;
+  border: 1px solid #5183fe;
+}
+
+.selected-user img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.selected-user span {
+  font-size: 14px;
+  color: white;
+}
+
+.selected-user button {
+  background: none;
+  border: none;
+  color: #ff6b6b;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-results {
+  margin-top: 15px;
+}
+
+.search-results h4 {
+  margin: 0 0 10px 0;
+  color: #5183fe;
+}
+
+.create-group-btn {
+  width: 100%;
+  padding: 12px;
+  background: #5183fe;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 15px;
+  transition: background 0.3s ease;
+}
+
+.create-group-btn:hover:not(:disabled) {
+  background: #4169e1;
+}
+
+.create-group-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
+.email {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}

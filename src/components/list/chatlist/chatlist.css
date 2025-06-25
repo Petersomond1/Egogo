@@ -74,3 +74,26 @@
     }
  
 }
+
+
+/* Chatlist.css - Enhanced styles for group chat display */
+.avatar-container {
+  position: relative;
+  display: inline-block;
+}
+
+.group-indicator {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  background: #5183fe;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  border: 2px solid white;
+}
