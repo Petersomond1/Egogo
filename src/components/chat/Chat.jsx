@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import './chat.css';
 import EmojiPicker from 'emoji-picker-react';
@@ -9,7 +8,6 @@ import {
   onSnapshot, 
   updateDoc, 
   deleteDoc,
-  writeBatch,
   collection,
   getDocs,
   query,
@@ -18,7 +16,11 @@ import {
 import { db } from '../lib/firebase';
 import { useChatStore } from '../lib/chatStore';
 import { useUserStore } from '../lib/userStore';
-import upload from '../lib/upload';
+import upload, { uploadMultipleFiles, validateFile } from '../lib/upload';
+import { useNetworkQuality } from '../lib/useNetworkQuality';
+import { useSmartRetry } from '../lib/useSmartRetry';
+import { useUploadPerformance } from '../lib/useUploadPerformance';
+import { showNotification } from '../notification/showNotification';
 
 const Chat = () => {
   const [chat, setChat] = useState();
@@ -32,11 +34,12 @@ const Chat = () => {
   const [isRecordingAudio, setIsRecordingAudio] = useState(false);
   const [isRecordingVideo, setIsRecordingVideo] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
-  const [recordedChunks, setRecordedChunks] = useState([]);
   
-  // Additional state for better UX
+  // Enhanced upload states
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState({});
+  const [uploadSpeed, setUploadSpeed] = useState(0);
+  const [estimatedTime, setEstimatedTime] = useState(0);
   
   // Group chat states
   const [showGroupInfo, setShowGroupInfo] = useState(false);
@@ -45,6 +48,11 @@ const Chat = () => {
   const [isEditingGroupName, setIsEditingGroupName] = useState(false);
   const [searchUser, setSearchUser] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  
+  // Custom hooks
+  const { adjustments } = useNetworkQuality();
+  const { retryUpload } = useSmartRetry();
+  const { recordUpload } = useUploadPerformance();
   
   const { currentUser } = useUserStore();
   const { 
@@ -72,7 +80,6 @@ const Chat = () => {
       const chatData = res.data();
       setChat(chatData);
       
-      // Update group members if it's a group chat
       if (chatData?.isGroup) {
         updateGroupMembers(chatData.members || []);
       }
@@ -80,26 +87,38 @@ const Chat = () => {
     return () => unSub();
   }, [chatId]);
 
-  // Initialize group name when switching chats
   useEffect(() => {
     if (isGroupChat && chatData?.groupName) {
       setNewGroupName(chatData.groupName);
     }
   }, [isGroupChat, chatData]);
-
+  
   const handleEmoji = (e) => {
     setText((prev) => prev + e.emoji);
     setOpen(false);
   };
 
+  // Enhanced file handlers with validation
   const handleImg = async (e) => {
     if (e.target.files[0]) {
       const file = e.target.files[0];
+      const validation = validateFile(file, 'image');
+      
+      if (!validation.valid) {
+        showNotification(`Image validation failed: ${validation.error}`, 'error');
+        return;
+      }
+      
       try {
         const url = URL.createObjectURL(file);
         setImg({ file, url });
+        
+        if (validation.willCompress) {
+          console.log(`📊 Image will be compressed from ${(validation.originalSize / (1024 * 1024)).toFixed(2)}MB to ~${(validation.estimatedSize / (1024 * 1024)).toFixed(2)}MB`);
+        }
       } catch (error) {
         console.error("❌ Error processing image:", error);
+        showNotification("Error processing image", 'error');
       }
     }
   };
@@ -107,11 +126,19 @@ const Chat = () => {
   const handleAudio = async (e) => {
     if (e.target.files[0]) {
       const file = e.target.files[0];
+      const validation = validateFile(file, 'audio');
+      
+      if (!validation.valid) {
+        showNotification(`Audio validation failed: ${validation.error}`, 'error');
+        return;
+      }
+      
       try {
         const url = URL.createObjectURL(file);
         setAudio({ file, url });
       } catch (error) {
         console.error("❌ Error processing audio:", error);
+        showNotification("Error processing audio", 'error');
       }
     }
   };
@@ -119,55 +146,62 @@ const Chat = () => {
   const handleVideo = async (e) => {
     if (e.target.files[0]) {
       const file = e.target.files[0];
+      const validation = validateFile(file, 'video');
+      
+      if (!validation.valid) {
+        showNotification(`Video validation failed: ${validation.error}`, 'error');
+        return;
+      }
+      
       try {
         const url = URL.createObjectURL(file);
         setVideo({ file, url });
+        
+        if (validation.willCompress) {
+          console.log(`📊 Video will be compressed from ${(validation.originalSize / (1024 * 1024)).toFixed(2)}MB to ~${(validation.estimatedSize / (1024 * 1024)).toFixed(2)}MB`);
+        }
       } catch (error) {
         console.error("❌ Error processing video:", error);
+        showNotification("Error processing video", 'error');
       }
     }
   };
 
-  // [Audio and Video recording functions remain the same as in your original code]
+  // Optimized recording functions
   const startAudioRecording = async () => {
     try {
-      console.log("🎤 Starting audio recording...");
+      console.log("🎤 Starting optimized audio recording...");
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          sampleRate: 44100
+          sampleRate: 44100,
+          channelCount: 2
         } 
       });
       
-      const options = [];
-      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-        options.push({ type: 'audio/webm;codecs=opus' });
-      }
-      if (MediaRecorder.isTypeSupported('audio/mp4')) {
-        options.push({ type: 'audio/mp4' });
-      }
-      if (MediaRecorder.isTypeSupported('audio/webm')) {
-        options.push({ type: 'audio/webm' });
+      // Use the best available codec
+      let mimeType = 'audio/webm;codecs=opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/webm';
       }
       
-      const recorderOptions = options.length > 0 ? options[0] : {};
-      const recorder = new MediaRecorder(stream, recorderOptions);
+      const recorder = new MediaRecorder(stream, { 
+        mimeType,
+        audioBitsPerSecond: 128000 // High quality but reasonable size
+      });
+      
       const chunks = [];
 
       recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunks.push(event.data);
-        }
+        if (event.data.size > 0) chunks.push(event.data);
       };
 
       recorder.onstop = () => {
-        const mimeType = recorder.mimeType || 'audio/webm';
         const blob = new Blob(chunks, { type: mimeType });
         const url = URL.createObjectURL(blob);
         const timestamp = Date.now();
-        const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
-        const fileName = `audio_recording_${timestamp}.${extension}`;
+        const fileName = `audio_recording_${timestamp}.webm`;
         const file = new File([blob], fileName, { type: mimeType });
         
         setAudio({ file, url });
@@ -175,55 +209,61 @@ const Chat = () => {
       };
 
       setMediaRecorder(recorder);
-      setRecordedChunks(chunks);
-      recorder.start(1000);
+      recorder.start(1000); // Collect data every second
       setIsRecordingAudio(true);
       
     } catch (error) {
       console.error("❌ Error starting audio recording:", error);
-      alert("Could not access microphone. Please check permissions and try again.");
+      showNotification("Could not access microphone. Please check permissions.", 'error');
     }
   };
 
   const startVideoRecording = async () => {
     try {
+      console.log("📹 Starting optimized video recording...");
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }, 
-        audio: { echoCancellation: true, noiseSuppression: true }
+        video: { 
+          width: { ideal: 1280, max: 1920 }, 
+          height: { ideal: 720, max: 1080 }, 
+          frameRate: { ideal: 30, max: 30 }
+        }, 
+        audio: { 
+          echoCancellation: true, 
+          noiseSuppression: true,
+          sampleRate: 44100
+        }
       });
       
       if (videoPreviewRef.current) {
         videoPreviewRef.current.srcObject = stream;
       }
 
-      const options = [];
-      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
-        options.push({ type: 'video/webm;codecs=vp9,opus' });
+      // Use optimized video settings
+      let mimeType = 'video/webm;codecs=vp9,opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'video/webm;codecs=vp8,opus';
       }
-      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
-        options.push({ type: 'video/webm;codecs=vp8,opus' });
-      }
-      if (MediaRecorder.isTypeSupported('video/webm')) {
-        options.push({ type: 'video/webm' });
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'video/webm';
       }
       
-      const recorderOptions = options.length > 0 ? options[0] : {};
-      const recorder = new MediaRecorder(stream, recorderOptions);
+      const recorder = new MediaRecorder(stream, { 
+        mimeType,
+        videoBitsPerSecond: 2500000, // 2.5 Mbps for good quality but reasonable size
+        audioBitsPerSecond: 128000
+      });
+      
       const chunks = [];
 
       recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunks.push(event.data);
-        }
+        if (event.data.size > 0) chunks.push(event.data);
       };
 
       recorder.onstop = () => {
-        const mimeType = recorder.mimeType || 'video/webm';
         const blob = new Blob(chunks, { type: mimeType });
         const url = URL.createObjectURL(blob);
         const timestamp = Date.now();
-        const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
-        const fileName = `video_recording_${timestamp}.${extension}`;
+        const fileName = `video_recording_${timestamp}.webm`;
         const file = new File([blob], fileName, { type: mimeType });
         
         setVideo({ file, url });
@@ -234,13 +274,12 @@ const Chat = () => {
       };
 
       setMediaRecorder(recorder);
-      setRecordedChunks(chunks);
       recorder.start(1000);
       setIsRecordingVideo(true);
       
     } catch (error) {
       console.error("❌ Error starting video recording:", error);
-      alert("Could not access camera/microphone. Please check permissions and try again.");
+      showNotification("Could not access camera/microphone. Please check permissions.", 'error');
     }
   };
 
@@ -253,148 +292,250 @@ const Chat = () => {
     }
   };
 
-  const handleSend = async () => {
-    if (text === "" && !img.file && !audio.file && !video.file) return;
-    if (isUploading) return;
+  // OPTIMIZED SEND FUNCTION WITH PARALLEL UPLOADS
 
-    setIsUploading(true);
-    setUploadProgress(0);
 
-    let imgUrl = null;
-    let audioUrl = null;
-    let videoUrl = null;
+const handleSend = async () => {
+  if (text === "" && !img.file && !audio.file && !video.file) return;
+  if (isUploading) return;
 
-    try {
-      const totalFiles = [img.file, audio.file, video.file].filter(Boolean).length;
-      let completedFiles = 0;
+  console.log("🚀 Starting handleSend function");
+  console.log("📄 Current form state:", {
+    text,
+    hasImg: !!img.file,
+    hasAudio: !!audio.file,
+    hasVideo: !!video.file
+  });
 
-      if(img.file){
-        imgUrl = await upload(img.file);
-        completedFiles++;
-        setUploadProgress((completedFiles / totalFiles) * 100);
+  setIsUploading(true);
+  const startTime = Date.now();
+
+  try {
+    // Prepare files with network-aware settings
+    const filesToUpload = [];
+    if (img.file) {
+      console.log("🖼️ Adding image file to upload:", img.file.name, img.file.size);
+      const validation = validateFile(img.file, 'image');
+      if (validation.valid) {
+        filesToUpload.push({ 
+          type: 'img', 
+          file: img.file,
+          compressionOptions: {
+            quality: adjustments.imageQuality,
+            maxWidth: adjustments.enableCompression ? 1920 : 2560,
+            maxHeight: adjustments.enableCompression ? 1080 : 1440
+          }
+        });
       }
+    }
+    
+    if (audio.file) {
+      console.log("🎵 Adding audio file to upload:", audio.file.name, audio.file.size);
+      const validation = validateFile(audio.file, 'audio');
+      if (validation.valid) {
+        filesToUpload.push({ type: 'audio', file: audio.file });
+      }
+    }
+    
+    if (video.file) {
+      console.log("🎥 Adding video file to upload:", video.file.name, video.file.size);
+      const validation = validateFile(video.file, 'video');
+      if (validation.valid) {
+        filesToUpload.push({ 
+          type: 'video', 
+          file: video.file,
+          compressionOptions: {
+            quality: adjustments.videoQuality,
+            enableCompression: adjustments.enableCompression
+          }
+        });
+      }
+    }
+
+    console.log("📁 Files prepared for upload:", filesToUpload.length);
+
+    // Create initial message data
+    const messageData = {
+      senderId: currentUser.id,
+      senderName: currentUser.username,
+      text: text || "",
+      createdAt: new Date(),
+    };
+
+    console.log("📝 Initial message data:", messageData);
+
+    // Handle file uploads if any
+    if (filesToUpload.length > 0) {
+      console.log("⬆️ Starting file uploads...");
       
-      if(audio.file){
-        audioUrl = await upload(audio.file);
-        completedFiles++;
-        setUploadProgress((completedFiles / totalFiles) * 100);
-      }
-      
-      if(video.file){
-        videoUrl = await upload(video.file);
-        completedFiles++;
-        setUploadProgress((completedFiles / totalFiles) * 100);
-      }
-
-      const messageData = {
-        senderId: currentUser.id,
-        senderName: currentUser.username,
-        text: text || "",
-        createdAt: new Date(),
-      };
-
-      if (imgUrl) messageData.img = imgUrl;
-      if (audioUrl) messageData.audio = audioUrl;
-      if (videoUrl) messageData.video = videoUrl;
-
-      // Save message to chat
-      await updateDoc(doc(db, "chats", chatId), {
-        messages: arrayUnion(messageData),
+      // Use smart retry for uploads
+      const uploadResults = await retryUpload(async () => {
+        return await uploadMultipleFiles(filesToUpload, (fileIndex, progress) => {
+          setUploadProgress(prev => ({
+            ...prev,
+            [filesToUpload[fileIndex].type]: progress
+          }));
+        });
       });
 
-      // Update user chats differently for group vs individual
-      if (isGroupChat) {
-        // Update all group members' chats
-        const memberIds = groupMembers.map(member => member.id);
-        
-        for (const memberId of memberIds) {
-          try {
-            const userChatsRef = doc(db, "userchats", memberId);
-            const userChatsSnap = await getDoc(userChatsRef);
+      console.log("✅ Upload results:", uploadResults);
 
-            if(userChatsSnap.exists()){
-              const userChatsData = userChatsSnap.data();
-              const chatIndex = userChatsData.chats.findIndex((chat) => chat.chatId === chatId);
-              
-              if (chatIndex !== -1) {
-                let lastMessage = text;
-                if (!lastMessage) {
-                  if (imgUrl) lastMessage = "📷 Image";
-                  else if (audioUrl) lastMessage = "🎵 Audio";
-                  else if (videoUrl) lastMessage = "🎥 Video";
-                  else lastMessage = "📎 Media";
-                }
-                
-                userChatsData.chats[chatIndex].lastMessage = `${currentUser.username}: ${lastMessage}`;
-                userChatsData.chats[chatIndex].isSeen = memberId === currentUser.id ? true : false;
-                userChatsData.chats[chatIndex].updatedAt = Date.now();
-
-                await updateDoc(userChatsRef, {
-                  chats: userChatsData.chats,
-                });
-              }
-            }
-          } catch (userChatError) {
-            console.error("❌ Error updating group member chat:", memberId, userChatError);
-          }
+      // Add URLs to message data
+      uploadResults.forEach(result => {
+        if (result && result.url) {
+          messageData[result.type] = result.url;
+          console.log(`🔗 Added ${result.type} URL:`, result.url);
+        } else {
+          console.error(`❌ No URL returned for ${result?.type || 'unknown'} file`);
         }
-      } else {
-        // Update individual chat (existing logic)
-        const userIDs = [currentUser.id, user.id];
+      });
 
-        for (const id of userIDs) {
-          try {
-            const userChatsRef = doc(db, "userchats", id);
-            const userChatsSnap = await getDoc(userChatsRef);
+      // Record performance metrics
+      recordUpload({
+        speed: calculateSpeed(filesToUpload, Date.now() - startTime),
+        success: true,
+        originalSize: filesToUpload.reduce((acc, f) => acc + f.file.size, 0),
+        compressedSize: uploadResults.reduce((acc, r) => acc + (r.compressedSize || r.originalSize), 0)
+      });
+    }
 
-            if(userChatsSnap.exists()){
-              const userChatsData = userChatsSnap.data();
-              const chatIndex = userChatsData.chats.findIndex((chat) => chat.chatId === chatId);
-              
-              if (chatIndex !== -1) {
-                let lastMessage = text;
-                if (!lastMessage) {
-                  if (imgUrl) lastMessage = "📷 Image";
-                  else if (audioUrl) lastMessage = "🎵 Audio";
-                  else if (videoUrl) lastMessage = "🎥 Video";
-                  else lastMessage = "📎 Media";
-                }
-                
-                userChatsData.chats[chatIndex].lastMessage = lastMessage;
-                userChatsData.chats[chatIndex].isSeen = id === currentUser.id ? true : false;
-                userChatsData.chats[chatIndex].updatedAt = Date.now();
+    console.log("📤 Final message data to send:", messageData);
 
-                await updateDoc(userChatsRef, {
-                  chats: userChatsData.chats,
-                });
-              }
+    // Update the chat document
+    console.log("💾 Updating Firestore document...");
+    await updateDoc(doc(db, "chats", chatId), {
+      messages: arrayUnion(messageData),
+    });
+
+    console.log("✅ Firestore document updated successfully");
+
+    // Update user chats
+    console.log("👥 Updating user chats...");
+    await updateUserChats(messageData);
+
+    console.log("✅ User chats updated successfully");
+
+    // Clear form
+    setImg({file: null, url:""});
+    setAudio({file: null, url:""});
+    setVideo({file: null, url:""});
+    setText("");
+
+    console.log(`✅ Message sent in ${Date.now() - startTime}ms`);
+    showNotification("Message sent successfully!", 'success');
+
+  } catch (err) {
+    console.error("❌ Error sending message:", err);
+    console.error("❌ Error details:", {
+      message: err.message,
+      code: err.code,
+      stack: err.stack
+    });
+    
+    // Record failed upload
+    recordUpload({
+      speed: 0,
+      success: false,
+      originalSize: 0,
+      compressedSize: 0
+    });
+    
+    // Enhanced error handling with user-friendly messages
+    handleUploadError(err);
+  } finally {
+    setIsUploading(false);
+    setUploadProgress({});
+    console.log("🏁 handleSend function completed");
+  }
+};
+
+
+  const handleUploadError = (error) => {
+    if (error.message.includes('Permission denied')) {
+      showNotification('Upload failed: Permission denied. Please check your authentication.', 'error');
+    } else if (error.message.includes('quota-exceeded')) {
+      showNotification('Upload failed: Storage quota exceeded. Please try again later.', 'error');
+    } else if (error.message.includes('Network')) {
+      showNotification('Upload failed: Network error. Please check your connection.', 'error');
+    } else {
+      showNotification(`Upload failed: ${error.message}`, 'error');
+    }
+  };
+
+  const calculateSpeed = (files, timeMs) => {
+    const totalSize = files.reduce((acc, f) => acc + f.file.size, 0);
+    return (totalSize / 1024) / (timeMs / 1000); // KB/s
+  };
+
+  // Optimized user chats update function
+  const updateUserChats = async (messageData) => {
+    const createLastMessage = () => {
+      if (messageData.text) return messageData.text;
+      if (messageData.img) return "📷 Image";
+      if (messageData.audio) return "🎵 Audio";
+      if (messageData.video) return "🎥 Video";
+      return "📎 Media";
+    };
+
+    const lastMessage = createLastMessage();
+    const updateTime = Date.now();
+
+    if (isGroupChat) {
+      // Batch update for group members
+      const memberIds = groupMembers.map(member => member.id);
+      const updatePromises = memberIds.map(async (memberId) => {
+        try {
+          const userChatsRef = doc(db, "userchats", memberId);
+          const userChatsSnap = await getDoc(userChatsRef);
+
+          if (userChatsSnap.exists()) {
+            const userChatsData = userChatsSnap.data();
+            const chatIndex = userChatsData.chats.findIndex((chat) => chat.chatId === chatId);
+            
+            if (chatIndex !== -1) {
+              userChatsData.chats[chatIndex].lastMessage = `${currentUser.username}: ${lastMessage}`;
+              userChatsData.chats[chatIndex].isSeen = memberId === currentUser.id;
+              userChatsData.chats[chatIndex].updatedAt = updateTime;
+
+              await updateDoc(userChatsRef, {
+                chats: userChatsData.chats,
+              });
             }
-          } catch (userChatError) {
-            console.error("❌ Error updating user chat for user:", id, userChatError);
           }
+        } catch (error) {
+          console.error(`❌ Error updating group member chat:`, memberId, error);
         }
-      }
+      });
 
-      // Clear form
-      setImg({file: null, url:""});
-      setAudio({file: null, url:""});
-      setVideo({file: null, url:""});
-      setText("");
+      await Promise.allSettled(updatePromises);
+    } else {
+      // Individual chat update
+      const userIDs = [currentUser.id, user.id];
+      const updatePromises = userIDs.map(async (id) => {
+        try {
+          const userChatsRef = doc(db, "userchats", id);
+          const userChatsSnap = await getDoc(userChatsRef);
 
-    } catch (err) {
-      console.error("❌ Error sending message:", err);
-      if (err.message.includes('Permission denied')) {
-        alert("Permission denied. Please check your authentication and try again.");
-      } else if (err.message.includes('storage/unauthorized')) {
-        alert("Upload permission denied. Please try logging out and back in.");
-      } else if (err.message.includes('quota-exceeded')) {
-        alert("Storage quota exceeded. Please try again later.");
-      } else {
-        alert(`Failed to send message: ${err.message}`);
-      }
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
+          if (userChatsSnap.exists()) {
+            const userChatsData = userChatsSnap.data();
+            const chatIndex = userChatsData.chats.findIndex((chat) => chat.chatId === chatId);
+            
+            if (chatIndex !== -1) {
+              userChatsData.chats[chatIndex].lastMessage = lastMessage;
+              userChatsData.chats[chatIndex].isSeen = id === currentUser.id;
+              userChatsData.chats[chatIndex].updatedAt = updateTime;
+
+              await updateDoc(userChatsRef, {
+                chats: userChatsData.chats,
+              });
+            }
+          }
+        } catch (error) {
+          console.error("❌ Error updating user chat:", id, error);
+        }
+      });
+
+      await Promise.allSettled(updatePromises);
     }
   };
 
@@ -410,9 +551,8 @@ const Chat = () => {
         groupName: newGroupName.trim(),
       });
 
-      // Update all members' userchats with new group name
       const memberIds = groupMembers.map(member => member.id);
-      for (const memberId of memberIds) {
+      const updatePromises = memberIds.map(async (memberId) => {
         const userChatsRef = doc(db, "userchats", memberId);
         const userChatsSnap = await getDoc(userChatsRef);
 
@@ -427,13 +567,15 @@ const Chat = () => {
             });
           }
         }
-      }
+      });
 
+      await Promise.allSettled(updatePromises);
       setIsEditingGroupName(false);
       console.log("✅ Group name updated successfully");
+      showNotification("Group name updated successfully!", 'success');
     } catch (error) {
       console.error("❌ Error updating group name:", error);
-      alert("Failed to update group name");
+      showNotification("Failed to update group name", 'error');
     }
   };
 
@@ -471,13 +613,11 @@ const Chat = () => {
         role: "member"
       };
 
-      // Update chat document
       await updateDoc(doc(db, "chats", chatId), {
         members: arrayUnion(newMember),
         memberIds: arrayUnion(userToAdd.id),
       });
 
-      // Add chat to new member's userchats
       const userChatsRef = doc(db, "userchats", userToAdd.id);
       await updateDoc(userChatsRef, {
         chats: arrayUnion({
@@ -490,7 +630,6 @@ const Chat = () => {
         }),
       });
 
-      // Add system message
       const systemMessage = {
         senderId: "system",
         senderName: "System",
@@ -506,39 +645,36 @@ const Chat = () => {
       setSearchUser('');
       setSearchResults([]);
       console.log("✅ Member added successfully");
+      showNotification("Member added successfully!", 'success');
     } catch (error) {
       console.error("❌ Error adding member:", error);
-      alert("Failed to add member");
+      showNotification("Failed to add member", 'error');
     }
   };
 
   const removeMemberFromGroup = async (memberToRemove) => {
     if (memberToRemove.id === currentUser.id) {
-      alert("You cannot remove yourself. Use 'Leave Group' instead.");
+      showNotification("You cannot remove yourself. Use 'Leave Group' instead.", 'error');
       return;
     }
 
     if (memberToRemove.role === "admin" && currentUser.id !== chatData?.groupAdmin) {
-      alert("Only group admin can remove other admins");
+      showNotification("Only group admin can remove other admins", 'error');
       return;
     }
 
     try {
-      // Get current chat data
       const chatDoc = await getDoc(doc(db, "chats", chatId));
       const currentChatData = chatDoc.data();
       
-      // Remove member from arrays
       const updatedMembers = currentChatData.members.filter(member => member.id !== memberToRemove.id);
       const updatedMemberIds = currentChatData.memberIds.filter(id => id !== memberToRemove.id);
 
-      // Update chat document
       await updateDoc(doc(db, "chats", chatId), {
         members: updatedMembers,
         memberIds: updatedMemberIds,
       });
 
-      // Remove chat from member's userchats
       const userChatsRef = doc(db, "userchats", memberToRemove.id);
       const userChatsSnap = await getDoc(userChatsRef);
 
@@ -551,7 +687,6 @@ const Chat = () => {
         });
       }
 
-      // Add system message
       const systemMessage = {
         senderId: "system",
         senderName: "System",
@@ -565,15 +700,16 @@ const Chat = () => {
       });
 
       console.log("✅ Member removed successfully");
+      showNotification("Member removed successfully!", 'success');
     } catch (error) {
       console.error("❌ Error removing member:", error);
-      alert("Failed to remove member");
+      showNotification("Failed to remove member", 'error');
     }
   };
 
   const leaveGroup = async () => {
     if (currentUser.id === chatData?.groupAdmin) {
-      alert("You are the group admin. Transfer admin rights before leaving or delete the group.");
+      showNotification("You are the group admin. Transfer admin rights before leaving or delete the group.", 'error');
       return;
     }
 
@@ -583,16 +719,15 @@ const Chat = () => {
 
     try {
       await removeMemberFromGroup({ id: currentUser.id, username: currentUser.username });
-      // The chat will be removed from current user's list and they'll be redirected
     } catch (error) {
       console.error("❌ Error leaving group:", error);
-      alert("Failed to leave group");
+      showNotification("Failed to leave group", 'error');
     }
   };
 
   const deleteGroup = async () => {
     if (currentUser.id !== chatData?.groupAdmin) {
-      alert("Only group admin can delete the group");
+      showNotification("Only group admin can delete the group", 'error');
       return;
     }
 
@@ -601,8 +736,7 @@ const Chat = () => {
     }
 
     try {
-      // Remove chat from all members' userchats
-      for (const member of groupMembers) {
+      const updatePromises = groupMembers.map(async (member) => {
         const userChatsRef = doc(db, "userchats", member.id);
         const userChatsSnap = await getDoc(userChatsRef);
 
@@ -614,15 +748,16 @@ const Chat = () => {
             chats: updatedChats,
           });
         }
-      }
+      });
 
-      // Delete the chat document
+      await Promise.allSettled(updatePromises);
       await deleteDoc(doc(db, "chats", chatId));
 
       console.log("✅ Group deleted successfully");
+      showNotification("Group deleted successfully!", 'success');
     } catch (error) {
       console.error("❌ Error deleting group:", error);
-      alert("Failed to delete group");
+      showNotification("Failed to delete group", 'error');
     }
   };
 
@@ -670,6 +805,28 @@ const Chat = () => {
     
     const member = groupMembers.find(m => m.id === senderId);
     return member?.username || "Unknown User";
+  };
+
+  // Calculate overall upload progress
+  const getOverallProgress = () => {
+    const progressValues = Object.values(uploadProgress);
+    if (progressValues.length === 0) return 0;
+    return progressValues.reduce((a, b) => a + b, 0) / progressValues.length;
+  };
+
+  // Format upload speed
+  const formatSpeed = (speed) => {
+    if (speed < 1) return `${(speed * 1000).toFixed(0)} B/s`;
+    if (speed < 1000) return `${speed.toFixed(1)} KB/s`;
+    return `${(speed / 1000).toFixed(1)} MB/s`;
+  };
+
+  // Format time
+  const formatTime = (seconds) => {
+    if (seconds < 60) return `${Math.round(seconds)}s`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.round(seconds % 60);
+    return `${minutes}m ${remainingSeconds}s`;
   };
 
   return (
@@ -771,7 +928,6 @@ const Chat = () => {
               </button>
             )}
 
-            {/* Add Members Section */}
             {showAddMembers && (
               <div className="add-members-section">
                 <h4>Add New Members</h4>
@@ -818,7 +974,6 @@ const Chat = () => {
               key={index}
             >
               <div className="texts">
-                {/* Show sender name for group chats (except for own messages and system messages) */}
                 {isGroupChat && !message.isSystemMessage && message.senderId !== currentUser?.id && (
                   <div className="sender-name">{getMemberDisplayName(message.senderId)}</div>
                 )}
@@ -856,11 +1011,14 @@ const Chat = () => {
             </div>
           ))}
           
-          {/* Preview attachments */}
+          {/* Enhanced preview attachments with file info */}
           {img.url && (
             <div className="message own preview">
               <div className="texts">
                 <Avatar src={img.url} alt="Preview image" />
+                <div className="file-info">
+                  <span>📷 Image • {(img.file.size / (1024 * 1024)).toFixed(2)} MB</span>
+                </div>
                 <button onClick={() => clearMedia('img')} className="clear-btn">×</button>
               </div>
             </div>
@@ -873,6 +1031,9 @@ const Chat = () => {
                   <audio controls>
                     <source src={audio.url} type="audio/webm" />
                   </audio>
+                </div>
+                <div className="file-info">
+                  <span>🎵 Audio • {(audio.file.size / (1024 * 1024)).toFixed(2)} MB</span>
                 </div>
                 <button onClick={() => clearMedia('audio')} className="clear-btn">×</button>
               </div>
@@ -887,16 +1048,18 @@ const Chat = () => {
                     <source src={video.url} type="video/webm" />
                   </video>
                 </div>
+                <div className="file-info">
+                  <span>🎥 Video • {(video.file.size / (1024 * 1024)).toFixed(2)} MB</span>
+                </div>
                 <button onClick={() => clearMedia('video')} className="clear-btn">×</button>
               </div>
             </div>
           )}
           
-          {/* Recording preview */}
           {isRecordingVideo && (
             <div className="recording-preview">
               <video ref={videoPreviewRef} autoPlay muted width="200" />
-              <p>Recording video...</p>
+              <p>🔴 Recording video...</p>
             </div>
           )}
           
@@ -905,7 +1068,6 @@ const Chat = () => {
 
         <div className="bottom">
           <div className="icons">
-            {/* Media upload icons */}
             <label htmlFor="file">
               <img src="./img.png" alt="Upload image" />
             </label>
@@ -979,7 +1141,7 @@ const Chat = () => {
               <EmojiPicker open={open} onEmojiClick={handleEmoji} />
             </div>
           </div>
-          
+        
           <button
             className="sendbutton"
             onClick={handleSend}
@@ -990,21 +1152,27 @@ const Chat = () => {
             }}
           >
             {isUploading ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span>Uploading...</span>
-                <div style={{ 
-                  width: '40px', 
-                  height: '4px', 
-                  background: 'rgba(255,255,255,0.3)', 
-                  borderRadius: '2px',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    width: `${uploadProgress}%`,
-                    height: '100%',
-                    background: 'white',
-                    transition: 'width 0.3s ease'
-                  }}></div>
+              <div className="upload-status">
+                <div className="upload-progress">
+                  <div style={{ 
+                    width: '60px', 
+                    height: '4px', 
+                    background: 'rgba(255,255,255,0.3)', 
+                    borderRadius: '2px',
+                    overflow: 'hidden',
+                    marginBottom: '2px'
+                  }}>
+                    <div style={{
+                      width: `${getOverallProgress()}%`,
+                      height: '100%',
+                      background: 'white',
+                      transition: 'width 0.3s ease'
+                    }}></div>
+                  </div>
+                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.8)' }}>
+                    {uploadSpeed > 0 && `${formatSpeed(uploadSpeed)}`}
+                    {estimatedTime > 0 && estimatedTime < 300 && ` • ${formatTime(estimatedTime)}`}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -1020,689 +1188,3 @@ const Chat = () => {
 export default Chat;
 
 
-
-
-
-
-
-// import React, { useEffect, useRef, useState } from 'react';
-// import './chat.css';
-// import EmojiPicker from 'emoji-picker-react';
-// import { arrayUnion, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
-// import { db } from '../lib/firebase';
-// import { useChatStore } from '../lib/chatStore';
-// import { useUserStore } from '../lib/userStore';
-// import upload from '../lib/upload';
-
-// const Chat = () => {
-//     const [chat, setChat] = React.useState();
-//     const [open, setOpen] = React.useState(false);
-//     const [text, setText] = React.useState('');
-//     const [img, setImg] = React.useState({file: null, url: ""});
-//     const [audio, setAudio] = React.useState({file: null, url: ""});
-//     const [video, setVideo] = React.useState({file: null, url: ""});
-    
-//     // Recording states
-//     const [isRecordingAudio, setIsRecordingAudio] = useState(false);
-//     const [isRecordingVideo, setIsRecordingVideo] = useState(false);
-//     const [mediaRecorder, setMediaRecorder] = useState(null);
-//     const [recordedChunks, setRecordedChunks] = useState([]);
-    
-//     // Additional state for better UX
-//     const [isUploading, setIsUploading] = useState(false);
-//     const [uploadProgress, setUploadProgress] = useState(0);
-    
-//     const { currentUser } = useUserStore();
-//     const { chatId, user, isCurrentUserBlocked, IsReceiverBlocked } = useChatStore();
-
-//     const endRef = useRef(null);
-//     const videoPreviewRef = useRef(null);
-
-//     useEffect(() => {
-//         endRef.current?.scrollIntoView({ behavior: 'smooth' });
-//     }, []);
-
-//     useEffect(() => {
-//         if (!chatId) return;
-       
-//         const unSub = onSnapshot(doc(db, "chats", chatId), (res) => {
-//             setChat(res.data());
-//         }); 
-//         return () => unSub();
-//     }, [chatId]);
-
-//     const handleEmoji = (e) => {
-//        setText((prev) => prev + e.emoji);
-//        setOpen(false);
-//     };
-
-//     const handleImg = async (e) => {
-//         if (e.target.files[0]) {
-//             const file = e.target.files[0];
-//             try {
-//                 const url = URL.createObjectURL(file);
-//                 setImg({ file, url });
-//             } catch (error) {
-//                 console.error("❌ Error processing image:", error);
-//             }
-//         }
-//     };
-
-//     const handleAudio = async (e) => {
-//         if (e.target.files[0]) {
-//             const file = e.target.files[0];
-//             try {
-//                 const url = URL.createObjectURL(file);
-//                 setAudio({ file, url });
-//             } catch (error) {
-//                 console.error("❌ Error processing audio:", error);
-//             }
-//         }
-//     };
-
-//     const handleVideo = async (e) => {
-//         if (e.target.files[0]) {
-//             const file = e.target.files[0];
-//             try {
-//                 const url = URL.createObjectURL(file);
-//                 setVideo({ file, url });
-//             } catch (error) {
-//                 console.error("❌ Error processing video:", error);
-//             }
-//         }
-//     };
-
-//     const startAudioRecording = async () => {
-//         try {
-//             console.log("🎤 Starting audio recording...");
-//             const stream = await navigator.mediaDevices.getUserMedia({ 
-//                 audio: {
-//                     echoCancellation: true,
-//                     noiseSuppression: true,
-//                     sampleRate: 44100
-//                 } 
-//             });
-            
-//             // Use a more compatible codec
-//             const options = [];
-//             if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-//                 options.push({ type: 'audio/webm;codecs=opus' });
-//             }
-//             if (MediaRecorder.isTypeSupported('audio/mp4')) {
-//                 options.push({ type: 'audio/mp4' });
-//             }
-//             if (MediaRecorder.isTypeSupported('audio/webm')) {
-//                 options.push({ type: 'audio/webm' });
-//             }
-            
-//             const recorderOptions = options.length > 0 ? options[0] : {};
-//             console.log("🔍 Using recorder options:", recorderOptions);
-            
-//             const recorder = new MediaRecorder(stream, recorderOptions);
-//             const chunks = [];
-
-//             recorder.ondataavailable = (event) => {
-//                 console.log("📊 Audio data available:", event.data.size, "bytes");
-//                 if (event.data.size > 0) {
-//                     chunks.push(event.data);
-//                 }
-//             };
-
-//             recorder.onstop = () => {
-//                 console.log("⏹️ Audio recording stopped");
-//                 const mimeType = recorder.mimeType || 'audio/webm';
-//                 const blob = new Blob(chunks, { type: mimeType });
-//                 const url = URL.createObjectURL(blob);
-                
-//                 // Create a more descriptive filename
-//                 const timestamp = Date.now();
-//                 const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
-//                 const fileName = `audio_recording_${timestamp}.${extension}`;
-                
-//                 const file = new File([blob], fileName, { type: mimeType });
-                
-//                 console.log("✅ Audio file created:", {
-//                     name: fileName,
-//                     size: file.size,
-//                     type: file.type
-//                 });
-                
-//                 setAudio({ file, url });
-//                 stream.getTracks().forEach(track => track.stop());
-//             };
-
-//             recorder.onerror = (event) => {
-//                 console.error("❌ Audio recording error:", event.error);
-//                 stream.getTracks().forEach(track => track.stop());
-//                 alert("Audio recording failed: " + event.error);
-//             };
-
-//             setMediaRecorder(recorder);
-//             setRecordedChunks(chunks);
-//             recorder.start(1000); // Collect data every second
-//             setIsRecordingAudio(true);
-            
-//             console.log("✅ Audio recording started successfully");
-//         } catch (error) {
-//             console.error("❌ Error starting audio recording:", error);
-//             alert("Could not access microphone. Please check permissions and try again.");
-//         }
-//     };
-
-//     const startVideoRecording = async () => {
-//         try {
-//             console.log("📹 Starting video recording...");
-//             const stream = await navigator.mediaDevices.getUserMedia({ 
-//                 video: {
-//                     width: { ideal: 1280 },
-//                     height: { ideal: 720 },
-//                     frameRate: { ideal: 30 }
-//                 }, 
-//                 audio: {
-//                     echoCancellation: true,
-//                     noiseSuppression: true
-//                 }
-//             });
-            
-//             if (videoPreviewRef.current) {
-//                 videoPreviewRef.current.srcObject = stream;
-//             }
-
-//             // Use compatible video codec
-//             const options = [];
-//             if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')) {
-//                 options.push({ type: 'video/webm;codecs=vp9,opus' });
-//             }
-//             if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')) {
-//                 options.push({ type: 'video/webm;codecs=vp8,opus' });
-//             }
-//             if (MediaRecorder.isTypeSupported('video/webm')) {
-//                 options.push({ type: 'video/webm' });
-//             }
-            
-//             const recorderOptions = options.length > 0 ? options[0] : {};
-//             console.log("🔍 Using video recorder options:", recorderOptions);
-
-//             const recorder = new MediaRecorder(stream, recorderOptions);
-//             const chunks = [];
-
-//             recorder.ondataavailable = (event) => {
-//                 console.log("📊 Video data available:", event.data.size, "bytes");
-//                 if (event.data.size > 0) {
-//                     chunks.push(event.data);
-//                 }
-//             };
-
-//             recorder.onstop = () => {
-//                 console.log("⏹️ Video recording stopped");
-//                 const mimeType = recorder.mimeType || 'video/webm';
-//                 const blob = new Blob(chunks, { type: mimeType });
-//                 const url = URL.createObjectURL(blob);
-                
-//                 // Create a descriptive filename
-//                 const timestamp = Date.now();
-//                 const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
-//                 const fileName = `video_recording_${timestamp}.${extension}`;
-                
-//                 const file = new File([blob], fileName, { type: mimeType });
-                
-//                 console.log("✅ Video file created:", {
-//                     name: fileName,
-//                     size: file.size,
-//                     type: file.type
-//                 });
-                
-//                 setVideo({ file, url });
-//                 stream.getTracks().forEach(track => track.stop());
-//                 if (videoPreviewRef.current) {
-//                     videoPreviewRef.current.srcObject = null;
-//                 }
-//             };
-
-//             recorder.onerror = (event) => {
-//                 console.error("❌ Video recording error:", event.error);
-//                 stream.getTracks().forEach(track => track.stop());
-//                 if (videoPreviewRef.current) {
-//                     videoPreviewRef.current.srcObject = null;
-//                 }
-//                 alert("Video recording failed: " + event.error);
-//             };
-
-//             setMediaRecorder(recorder);
-//             setRecordedChunks(chunks);
-//             recorder.start(1000); // Collect data every second
-//             setIsRecordingVideo(true);
-            
-//             console.log("✅ Video recording started successfully");
-//         } catch (error) {
-//             console.error("❌ Error starting video recording:", error);
-//             alert("Could not access camera/microphone. Please check permissions and try again.");
-//         }
-//     };
-
-//     const stopRecording = () => {
-//         if (mediaRecorder && mediaRecorder.state === 'recording') {
-//             mediaRecorder.stop();
-//             setIsRecordingAudio(false);
-//             setIsRecordingVideo(false);
-//             setMediaRecorder(null);
-//         }
-//     };
-
-//     const scrollToBottom = () => {
-//         endRef.current?.scrollIntoView({ behavior: 'smooth' });
-//     };
-
-//     useEffect(() => {
-//         scrollToBottom();
-//     }, [text, chat]);
-
-//     const handleSend = async () => {
-//         if (text === "" && !img.file && !audio.file && !video.file) return;
-//         if (isUploading) return; // Prevent multiple sends
-
-//         setIsUploading(true);
-//         setUploadProgress(0);
-
-//         let imgUrl = null;
-//         let audioUrl = null;
-//         let videoUrl = null;
-
-//         try {
-//             console.log("🔍 Starting message send process...");
-//             console.log("- Has image:", !!img.file);
-//             console.log("- Has audio:", !!audio.file);
-//             console.log("- Has video:", !!video.file);
-//             console.log("- Text:", text);
-
-//             const totalFiles = [img.file, audio.file, video.file].filter(Boolean).length;
-//             let completedFiles = 0;
-
-//             // Upload files sequentially to avoid overwhelming Firebase
-//             if(img.file){
-//                 console.log("📤 Uploading image...");
-//                 imgUrl = await upload(img.file);
-//                 console.log("✅ Image uploaded:", imgUrl);
-//                 completedFiles++;
-//                 setUploadProgress((completedFiles / totalFiles) * 100);
-//             }
-            
-//             if(audio.file){
-//                 console.log("📤 Uploading audio...");
-//                 audioUrl = await upload(audio.file);
-//                 console.log("✅ Audio uploaded:", audioUrl);
-//                 completedFiles++;
-//                 setUploadProgress((completedFiles / totalFiles) * 100);
-//             }
-            
-//             if(video.file){
-//                 console.log("📤 Uploading video...");
-//                 videoUrl = await upload(video.file);
-//                 console.log("✅ Video uploaded:", videoUrl);
-//                 completedFiles++;
-//                 setUploadProgress((completedFiles / totalFiles) * 100);
-//             }
-
-//             // Prepare message data
-//             const messageData = {
-//                 senderId: currentUser.id,
-//                 text: text || "", // Ensure text is never undefined
-//                 createdAt: new Date(),
-//             };
-
-//             // Add media URLs only if they exist
-//             if (imgUrl) messageData.img = imgUrl;
-//             if (audioUrl) messageData.audio = audioUrl;
-//             if (videoUrl) messageData.video = videoUrl;
-
-//             console.log("💾 Saving message to Firestore:", messageData);
-
-//             // Save message to Firestore
-//             await updateDoc(doc(db, "chats", chatId), {
-//                 messages: arrayUnion(messageData),
-//             });
-
-//             console.log("✅ Message saved to chat");
-
-//             // Update user chats
-//             const userIDs = [currentUser.id, user.id];
-
-//             for (const id of userIDs) {
-//                 try {
-//                     const userChatsRef = doc(db, "userchats", id);
-//                     const userChatsSnap = await getDoc(userChatsRef);
-
-//                     if(userChatsSnap.exists()){
-//                         const userChatsData = userChatsSnap.data();
-//                         const chatIndex = userChatsData.chats.findIndex((chat) => chat.chatId === chatId);
-                        
-//                         if (chatIndex !== -1) {
-//                             // Create a meaningful last message preview
-//                             let lastMessage = text;
-//                             if (!lastMessage) {
-//                                 if (imgUrl) lastMessage = "📷 Image";
-//                                 else if (audioUrl) lastMessage = "🎵 Audio";
-//                                 else if (videoUrl) lastMessage = "🎥 Video";
-//                                 else lastMessage = "📎 Media";
-//                             }
-                            
-//                             userChatsData.chats[chatIndex].lastMessage = lastMessage;
-//                             userChatsData.chats[chatIndex].isSeen = id === currentUser.id ? true : false;
-//                             userChatsData.chats[chatIndex].updatedAt = Date.now();
-
-//                             await updateDoc(userChatsRef, {
-//                                 chats: userChatsData.chats,
-//                             });
-//                         }
-//                     }
-//                 } catch (userChatError) {
-//                     console.error("❌ Error updating user chat for user:", id, userChatError);
-//                 }
-//             }
-
-//             console.log("✅ User chats updated successfully");
-
-//             // Clear form only after successful send
-//             setImg({file: null, url:""});
-//             setAudio({file: null, url:""});
-//             setVideo({file: null, url:""});
-//             setText("");
-            
-//             console.log("✅ Message sent successfully and form cleared");
-
-//         } catch (err) {
-//             console.error("❌ Error sending message:", err);
-//             console.error("- Error code:", err.code);
-//             console.error("- Error message:", err.message);
-            
-//             // Show user-friendly error messages
-//             if (err.message.includes('Permission denied')) {
-//                 alert("Permission denied. Please check your authentication and try again.");
-//             } else if (err.message.includes('storage/unauthorized')) {
-//                 alert("Upload permission denied. Please try logging out and back in.");
-//             } else if (err.message.includes('quota-exceeded')) {
-//                 alert("Storage quota exceeded. Please try again later.");
-//             } else {
-//                 alert(`Failed to send message: ${err.message}`);
-//             }
-//         } finally {
-//             setIsUploading(false);
-//             setUploadProgress(0);
-//         }
-//     };
-
-//     const clearMedia = (type) => {
-//         if (type === 'img') setImg({file: null, url: ""});
-//         if (type === 'audio') setAudio({file: null, url: ""});
-//         if (type === 'video') setVideo({file: null, url: ""});
-//     };
-
-//     // Enhanced Avatar Component with error handling
-//     const Avatar = ({ src, alt, className = "" }) => {
-//         const [imgSrc, setImgSrc] = useState(src);
-//         const [hasError, setHasError] = useState(false);
-
-//         useEffect(() => {
-//             setImgSrc(src);
-//             setHasError(false);
-//         }, [src]);
-
-//         const handleError = () => {
-//             console.log("❌ Failed to load avatar:", src);
-//             setHasError(true);
-//             setImgSrc("./avatar.png");
-//         };
-
-//         const handleLoad = () => {
-//             if (src && src !== "./avatar.png") {
-//                 console.log("✅ Avatar loaded successfully:", src);
-//             }
-//         };
-
-//         return (
-//             <img 
-//                 src={imgSrc || "./avatar.png"} 
-//                 alt={alt}
-//                 className={className}
-//                 onError={handleError}
-//                 onLoad={handleLoad}
-//                 style={{ 
-//                     objectFit: 'cover',
-//                     border: hasError ? '2px solid #ff6b6b' : 'none'
-//                 }}
-//             />
-//         );
-//     };
-
-//     return (
-//       <>
-//         <div className="chat_container">
-//           <div className="top">
-//             <div className="user">
-//               <Avatar src={user?.avatar} alt="Chat user avatar" />
-//               <div className="texts">
-//                 <span>{user?.username || "John Doe"}</span>
-//                 <p>Lorem ipsum dolor sit.</p>
-//               </div>
-//             </div>
-//             <div className="icons">
-//               <img src="./phone.png" alt="" />
-//               <img src="./video.png" alt="Video call" />
-//               <img src="./info.png" alt="" />
-//             </div>
-//           </div>
-
-//           <div className="center">
-//             {chat?.messages?.map((message, index) => (
-//               <div
-//                 className={
-//                   message.senderId === currentUser?.id
-//                     ? "message own"
-//                     : "message"
-//                 }
-//                 key={index}
-//               >
-//                 <div className="texts">
-//                   {message.img && (
-//                     <Avatar src={message.img} alt="Message image" />
-//                   )}
-//                   {message.audio && (
-//                     <div className="audio-player">
-//                       <audio controls>
-//                         <source src={message.audio} type="audio/webm" />
-//                         <source src={message.audio} type="audio/mp3" />
-//                         Your browser does not support the audio element.
-//                       </audio>
-//                     </div>
-//                   )}
-//                   {message.video && (
-//                     <div className="video-player">
-//                       <video controls width="300">
-//                         <source src={message.video} type="video/webm" />
-//                         <source src={message.video} type="video/mp4" />
-//                         Your browser does not support the video element.
-//                       </video>
-//                     </div>
-//                   )}
-//                   <p>{message.text}</p>
-//                   <span>
-//                     {new Date(
-//                       message.createdAt?.toDate
-//                         ? message.createdAt.toDate()
-//                         : message.createdAt
-//                     ).toLocaleTimeString()}
-//                   </span>
-//                 </div>
-//               </div>
-//             ))}
-            
-//             {/* Preview attachments */}
-//             {img.url && (
-//               <div className="message own preview">
-//                 <div className="texts">
-//                   <Avatar src={img.url} alt="Preview image" />
-//                   <button onClick={() => clearMedia('img')} className="clear-btn">×</button>
-//                 </div>
-//               </div>
-//             )}
-            
-//             {audio.url && (
-//               <div className="message own preview">
-//                 <div className="texts">
-//                   <div className="audio-player">
-//                     <audio controls>
-//                       <source src={audio.url} type="audio/webm" />
-//                     </audio>
-//                   </div>
-//                   <button onClick={() => clearMedia('audio')} className="clear-btn">×</button>
-//                 </div>
-//               </div>
-//             )}
-            
-//             {video.url && (
-//               <div className="message own preview">
-//                 <div className="texts">
-//                   <div className="video-player">
-//                     <video controls width="300">
-//                       <source src={video.url} type="video/webm" />
-//                     </video>
-//                   </div>
-//                   <button onClick={() => clearMedia('video')} className="clear-btn">×</button>
-//                 </div>
-//               </div>
-//             )}
-            
-//             {/* Recording preview */}
-//             {isRecordingVideo && (
-//               <div className="recording-preview">
-//                 <video ref={videoPreviewRef} autoPlay muted width="200" />
-//                 <p>Recording video...</p>
-//               </div>
-//             )}
-            
-//             <div ref={endRef}></div>
-//           </div>
-
-//           <div className="bottom">
-//             <div className="icons">
-//               {/* Image upload */}
-//               <label htmlFor="file">
-//                 <img src="./img.png" alt="Upload image" />
-//               </label>
-//               <input
-//                 type="file"
-//                 id="file"
-//                 style={{ display: "none" }}
-//                 onChange={handleImg}
-//                 accept="image/*"
-//               />
-              
-//               {/* Audio upload */}
-//               <label htmlFor="audio-file">
-//                 <img src="./audio.png" alt="Upload audio" />
-//               </label>
-//               <input
-//                 type="file"
-//                 id="audio-file"
-//                 style={{ display: "none" }}
-//                 onChange={handleAudio}
-//                 accept="audio/*"
-//               />
-              
-//               {/* Video upload */}
-//               <label htmlFor="video-file">
-//                 <img src="./video-upload.png" alt="Upload video" />
-//               </label>
-//               <input
-//                 type="file"
-//                 id="video-file"
-//                 style={{ display: "none" }}
-//                 onChange={handleVideo}
-//                 accept="video/*"
-//               />
-              
-//               {/* Camera/Video recording */}
-//               <img 
-//                 src="./camera.png" 
-//                 alt="Record video" 
-//                 onClick={isRecordingVideo ? stopRecording : startVideoRecording}
-//                 style={{ filter: isRecordingVideo ? 'brightness(1.5)' : 'none' }}
-//               />
-              
-//               {/* Microphone/Audio recording */}
-//               <img 
-//                 src="./mic.png" 
-//                 alt="Record audio" 
-//                 onClick={isRecordingAudio ? stopRecording : startAudioRecording}
-//                 style={{ filter: isRecordingAudio ? 'brightness(1.5)' : 'none' }}
-//               />
-              
-//               {/* Stop recording button (visible when recording) */}
-//               {(isRecordingAudio || isRecordingVideo) && (
-//                 <button onClick={stopRecording} className="stop-recording">
-//                   ⏹️ Stop
-//                 </button>
-//               )}
-//             </div>
-            
-//             <input
-//               type="text"
-//               placeholder={
-//                 isCurrentUserBlocked || IsReceiverBlocked
-//                   ? "You cannot Send a message "
-//                   : "Type a message..."
-//               }
-//               value={text}
-//               onChange={(e) => setText(e.target.value)}
-//               disabled={isCurrentUserBlocked || IsReceiverBlocked}
-//               onKeyPress={(e) => e.key === "Enter" && handleSend()}
-//             />
-            
-//             <div className="emoji">
-//               <img src="./emoji.png" alt="" onClick={() => setOpen(!open)} />
-//               <div className="picker">
-//                 <EmojiPicker open={open} onEmojiClick={handleEmoji} />
-//               </div>
-//             </div>
-            
-//             <button
-//               className="sendbutton"
-//               onClick={handleSend}
-//               disabled={isCurrentUserBlocked || IsReceiverBlocked || isUploading}
-//               style={{
-//                 opacity: isUploading ? 0.7 : 1,
-//                 position: 'relative'
-//               }}
-//             >
-//               {isUploading ? (
-//                 <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-//                   <span>Uploading...</span>
-//                   <div style={{ 
-//                     width: '40px', 
-//                     height: '4px', 
-//                     background: 'rgba(255,255,255,0.3)', 
-//                     borderRadius: '2px',
-//                     overflow: 'hidden'
-//                   }}>
-//                     <div style={{
-//                       width: `${uploadProgress}%`,
-//                       height: '100%',
-//                       background: 'white',
-//                       transition: 'width 0.3s ease'
-//                     }}></div>
-//                   </div>
-//                 </div>
-//               ) : (
-//                 "Send"
-//               )}
-//             </button>
-//           </div>
-//         </div>
-//       </>
-//     );
-// };
-
-// export default Chat;
-
- //chatId was used to replace the hardcoded chatId at create of chatStore
-        //we go do logic at app.jsx for chatId presence
